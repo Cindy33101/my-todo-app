@@ -209,7 +209,7 @@ button{cursor:pointer}
           <div class="quickdates" data-target="newDue"><button type="button" class="chip" data-q="today">今天</button><button type="button" class="chip" data-q="tomorrow">明天</button><button type="button" class="chip" data-q="weekend">本週末</button><button type="button" class="chip" data-q="nextmon">下週一</button><button type="button" class="chip" data-q="clear">清除</button></div>
         </div>
         <div class="field"><label for="newNotes">備註</label><textarea id="newNotes" rows="2" placeholder="補充說明（選填）"></textarea></div>
-        <div class="field"><label for="newFiles">附件（圖片或檔案，可複選）</label><input id="newFiles" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.ppt,.pptx"><small class="muted">單一檔案上限 10 MB；圖片會自動壓縮後上傳。</small></div>
+        <div class="field"><label for="newFiles">附件（圖片或檔案，可複選）</label><input id="newFiles" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.ppt,.pptx"><div id="newFileList"></div><small class="muted">單一檔案上限 10 MB；圖片會自動壓縮後上傳。可按 ✕ 移除已選檔案。</small></div>
       </div>
     </div>
     <div id="appMsg" class="notice" role="status"></div>
@@ -257,7 +257,7 @@ button{cursor:pointer}
     <div class="quickdates" data-target="editDue"><button type="button" class="chip" data-q="today">今天</button><button type="button" class="chip" data-q="tomorrow">明天</button><button type="button" class="chip" data-q="weekend">本週末</button><button type="button" class="chip" data-q="nextmon">下週一</button><button type="button" class="chip" data-q="clear">清除</button></div>
   </div>
   <div class="field"><label for="editNotes">備註</label><textarea id="editNotes" rows="3" placeholder="補充說明（選填）"></textarea></div>
-  <div class="field"><label for="editFiles">新增附件</label><input id="editFiles" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.ppt,.pptx"><div id="existingAttachments"></div></div>
+  <div class="field"><label for="editFiles">新增附件</label><input id="editFiles" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.ppt,.pptx"><div id="editFileList"></div><div id="existingAttachments"></div></div>
   <button id="saveEdit" class="btn primary wide">儲存修改</button>
   <div id="editMsg" class="notice" role="status"></div>
 </div></div>
@@ -288,7 +288,7 @@ const BUCKET_NAMES = ['已逾期', '今天', '明天', '未來 7 天', '更晚',
 let user = null, tasks = [], busy = false, lastWrite = 0, lastLoad = 0, channel = null, loadTimer = null;
 let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedDate = '';
-let editAtt = [], editRemoved = [];
+let editAtt = [], editRemoved = [], newPending = [], editPending = [];
 const ui = Object.assign({view:'open', cat:'全部', sort:'smart', calOpen: window.innerWidth > 520}, (() => { try { return JSON.parse(localStorage.getItem('todo-ui') || '{}'); } catch (e) { return {}; } })());
 const saveUi = () => { try { localStorage.setItem('todo-ui', JSON.stringify(ui)); } catch (e) {} };
 
@@ -614,11 +614,19 @@ async function uploadAttachments(files, noteId) {
   finally { if (noteId) msg(noteId, ''); }
   return out;
 }
+function fmtSize(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+function addPending(arr, files) {
+  Array.from(files || []).forEach(f => { if (!arr.some(x => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified)) arr.push(f); });
+}
+function renderPending(listId, arr) {
+  $(listId).innerHTML = arr.map((f, i) => `<div class="attrow"><span>📎 ${escapeHtml(f.name)} <small class="muted">（${fmtSize(f.size)}，待上傳）</small></span><button type="button" class="iconbtn" data-rm-pending="${i}" aria-label="移除 ${escapeHtml(f.name)}">✕</button></div>`).join('')
+    + (arr.length > 1 ? `<button type="button" class="linkbtn" data-clear-pending="1">全部移除</button>` : '');
+}
 function removeFiles(paths) { paths = (paths || []).filter(Boolean); if (paths.length) db.storage.from(BUCKET).remove(paths).catch(() => {}); }
 
 /* ---------- 新增 / 修改 / 刪除 ---------- */
 function resetComposer() {
-  $('newTitle').value = ''; $('newDue').value = ''; $('newCategory').value = '生活'; $('newPriority').value = '普通'; $('newRepeat').value = '不重複'; $('newNotes').value = ''; $('newFiles').value = '';
+  $('newTitle').value = ''; $('newDue').value = ''; $('newCategory').value = '生活'; $('newPriority').value = '普通'; $('newRepeat').value = '不重複'; $('newNotes').value = ''; $('newFiles').value = ''; newPending = []; renderPending('newFileList', newPending);
   updatePreview();
   if (window.matchMedia('(pointer:fine)').matches) $('newTitle').focus();
 }
@@ -634,7 +642,7 @@ async function addTask() {
   busy = true; $('addBtn').disabled = true;
   let uploaded = [];
   try {
-    uploaded = await uploadAttachments($('newFiles').files, 'appMsg'); payload.attachments = uploaded;
+    uploaded = await uploadAttachments(newPending, 'appMsg'); payload.attachments = uploaded;
     const {data, error} = await db.from('tasks').insert(payload).select().single();
     if (error) throw error;
     lastWrite = Date.now(); tasks.unshift(data);
@@ -704,7 +712,7 @@ function renderEditAttachments() {
 function openEdit(id) {
   const t = byId(id); if (!t) return;
   $('editId').value = t.id; $('editTitle').value = t.title; $('editCategory').value = t.category || '生活'; $('editPriority').value = t.priority || '普通';
-  $('editDue').value = dateToInput(t.due_at); $('editRepeat').value = t.repeat_type || '不重複'; $('editNotes').value = t.notes || ''; $('editFiles').value = '';
+  $('editDue').value = dateToInput(t.due_at); $('editRepeat').value = t.repeat_type || '不重複'; $('editNotes').value = t.notes || ''; $('editFiles').value = ''; editPending = []; renderPending('editFileList', editPending);
   editAtt = (t.attachments || []).slice(); editRemoved = []; renderEditAttachments();
   msg('editMsg', ''); $('editModal').classList.remove('hide'); $('editTitle').focus();
 }
@@ -714,14 +722,14 @@ async function saveEdit() {
   $('saveEdit').disabled = true;
   let uploaded = [];
   try {
-    uploaded = await uploadAttachments($('editFiles').files, 'editMsg');
+    uploaded = await uploadAttachments(editPending, 'editMsg');
     const patch = {title, category: $('editCategory').value, priority: $('editPriority').value, due_at: inputToIso($('editDue').value), repeat_type: $('editRepeat').value, notes: $('editNotes').value.trim(), attachments: editAtt.concat(uploaded), updated_at: new Date().toISOString()};
     lastWrite = Date.now();
     const {data, error} = await db.from('tasks').update(patch).eq('id', id).select().single();
     if (error) throw error;
     removeFiles(editRemoved.map(a => a.path));
     const i = tasks.findIndex(x => sameId(x.id, id)); if (i >= 0) tasks[i] = data;
-    $('editModal').classList.add('hide'); render(); toast('已儲存', 'success');
+    editPending = []; renderPending('editFileList', editPending); $('editModal').classList.add('hide'); render(); toast('已儲存', 'success');
   } catch (e) { removeFiles(uploaded.map(a => a.path)); msg('editMsg', '儲存失敗：' + (e.message || e), 'error'); }
   finally { $('saveEdit').disabled = false; }
 }
@@ -833,6 +841,17 @@ $('taskList').addEventListener('click', e => {
 $('existingAttachments').addEventListener('click', e => {
   const b = e.target.closest('button[data-rm-att]'); if (!b) return;
   const [a] = editAtt.splice(+b.dataset.rmAtt, 1); if (a) editRemoved.push(a); renderEditAttachments();
+});
+$('newFiles').addEventListener('change', e => { addPending(newPending, e.target.files); e.target.value = ''; renderPending('newFileList', newPending); });
+$('editFiles').addEventListener('change', e => { addPending(editPending, e.target.files); e.target.value = ''; renderPending('editFileList', editPending); });
+[['newFileList', () => newPending, v => { newPending = v; }], ['editFileList', () => editPending, v => { editPending = v; }]].forEach(([id, get, set]) => {
+  $(id).addEventListener('click', e => {
+    const rm = e.target.closest('button[data-rm-pending]'), all = e.target.closest('button[data-clear-pending]');
+    if (rm) { const arr = get().slice(); arr.splice(+rm.dataset.rmPending, 1); set(arr); }
+    else if (all) set([]);
+    else return;
+    renderPending(id, get());
+  });
 });
 $('saveEdit').addEventListener('click', saveEdit);
 $('editTitle').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) saveEdit(); });
