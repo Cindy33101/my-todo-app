@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="待辦清單">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23A88D6C'/%3E%3Cpath d='M18 33l10 10 19-22' fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <title>我的待辦清單｜奶油鵝黃月曆</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -171,7 +173,7 @@ button{cursor:pointer}
   <div id="menu" class="menu hide" role="menu">
     <div class="menuinfo" id="menuUser"></div>
     <button data-menu="refresh" role="menuitem">↻ 重新同步</button>
-    <button data-menu="notify" id="notifyItem" role="menuitem">🔔 開啟到期通知</button>
+    <button data-menu="notify" id="notifyItem" role="menuitem">🔔 開啟背景推播</button>
     <button data-menu="export" role="menuitem">⤓ 匯出備份</button>
     <button data-menu="import" role="menuitem">⤒ 匯入備份</button>
     <button data-menu="logout" class="danger-text" role="menuitem">登出</button>
@@ -240,7 +242,7 @@ button{cursor:pointer}
   <div class="sectionhead"><h2 id="listTitle">待辦事項</h2><span id="resultCount">0 項</span></div>
   <div id="taskList" class="tasklist"></div>
   <input id="importFile" type="file" accept="application/json,.json" class="hide">
-  <p class="foot">資料儲存在 Supabase 雲端，手機與電腦用同一個帳號即可同步。到期提醒需開著此頁面才會觸發（到期前 10 分鐘）；背景推播尚未設定。<br>快捷鍵：<b>N</b> 新增　<b>/</b> 搜尋　<b>Esc</b> 關閉視窗</p>
+  <p class="foot">資料儲存在 Supabase 雲端，手機與電腦用同一個帳號即可同步。到期前 10 分鐘會提醒。要在沒開頁面時也收到通知，請按右上角 ⋯ → 開啟背景推播（iPhone 需先加入主畫面）。<br>快捷鍵：<b>N</b> 新增　<b>/</b> 搜尋　<b>Esc</b> 關閉視窗</p>
 </section>
 </main>
 
@@ -281,6 +283,7 @@ const $ = id => document.getElementById(id);
 const BUCKET = 'todo-attachments';
 const CATS = ['工作', '生活', '購物'];
 const REMIND_MIN = 10;
+const VAPID_PUBLIC_KEY = 'BMIPN-1CsXjtnTVrqEzCHPfmFBmdSADGzCwVldgRaKmyNdWPfbzmc12OP9nRabmuhjvtoTG1ovmNwV9jM91-wn0';
 const priorityRank = {'高':0, '普通':1, '低':2};
 const BUCKET_NAMES = ['已逾期', '今天', '明天', '未來 7 天', '更晚', '未排定日期'];
 
@@ -784,16 +787,65 @@ function checkReminders() {
     seen[key] = now; changed = true;
     const when = due > now ? `${Math.max(1, Math.round((due - now) / 60000))} 分鐘後到期` : '已到期';
     toast(`⏰ ${t.title}（${when}）`, {ttl: 10000});
-    if ('Notification' in window && Notification.permission === 'granted') { try { new Notification('待辦提醒', {body: `${t.title}（${when}）`, tag: String(t.id)}); } catch (e) {} }
+    let pushOn = false; try { pushOn = localStorage.getItem('todo-push') === '1'; } catch (e) {}
+    if (!pushOn && 'Notification' in window && Notification.permission === 'granted') { try { new Notification('待辦提醒', {body: `${t.title}（${when}）`, tag: String(t.id)}); } catch (e) {} }
   });
   if (changed) { try { localStorage.setItem('todo-notified', JSON.stringify(seen)); } catch (e) {} }
 }
-function refreshNotifyItem() {
-  const it = $('notifyItem');
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+const pushCapable = () => ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window) && !!VAPID_PUBLIC_KEY;
+const b64ToU8 = b64 => { const p = '='.repeat((4 - b64.length % 4) % 4), raw = atob((b64 + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); };
+async function swReady() {
+  return Promise.race([navigator.serviceWorker.ready, new Promise((_, rej) => setTimeout(() => rej(new Error('Service Worker 尚未就緒，請重新整理後再試')), 8000))]);
+}
+async function getSub() { try { const reg = await navigator.serviceWorker.getRegistration(); return reg ? await reg.pushManager.getSubscription() : null; } catch (e) { return null; } }
+async function refreshNotifyItem() {
+  const it = $('notifyItem'); it.classList.remove('hide'); it.disabled = false;
+  if (isIOS && !isStandalone) { it.textContent = '📲 如何開啟背景推播（iPhone）'; return; }
+  if (pushCapable()) {
+    if (Notification.permission === 'denied') { it.textContent = '🔕 通知已被封鎖（請到系統設定開啟）'; it.disabled = true; return; }
+    it.textContent = (await getSub()) ? '🔕 關閉背景推播' : '🔔 開啟背景推播';
+    return;
+  }
   if (!('Notification' in window)) { it.classList.add('hide'); return; }
   const p = Notification.permission;
   it.disabled = p !== 'default';
-  it.textContent = p === 'granted' ? '🔔 到期通知已開啟' : p === 'denied' ? '🔕 通知已被瀏覽器封鎖' : '🔔 開啟到期通知';
+  it.textContent = p === 'granted' ? '🔔 頁面開啟時提醒：已開啟' : p === 'denied' ? '🔕 通知已被瀏覽器封鎖' : '🔔 開啟到期通知（僅頁面開著時）';
+}
+async function enablePush() {
+  try {
+    const reg = await swReady();
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUBLIC_KEY)});
+    const j = sub.toJSON();
+    const {error} = await db.from('push_subscriptions').upsert({user_id: user.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth}, {onConflict: 'endpoint'});
+    if (error) throw error;
+    try { localStorage.setItem('todo-push', '1'); } catch (e) {}
+    toast('背景推播已開啟，之後到期前 10 分鐘會通知你', 'success');
+  } catch (e) { toast('開啟推播失敗：' + (e.message || e), 'error'); }
+}
+async function disablePush(sub) {
+  try {
+    await db.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+    await sub.unsubscribe();
+    try { localStorage.removeItem('todo-push'); } catch (e) {}
+    toast('已關閉背景推播');
+  } catch (e) { toast('關閉失敗：' + (e.message || e), 'error'); }
+}
+async function onNotifyClick() {
+  if (isIOS && !isStandalone) { alert('iPhone 要先把網站「加入主畫面」才能收到背景推播：\n\n1. 用 Safari 開啟此網頁\n2. 點下方分享按鈕 → 加入主畫面\n3. 之後請從主畫面的圖示開啟，再按 ⋯ → 開啟背景推播\n\n（需要 iOS 16.4 以上）'); return; }
+  if (pushCapable()) {
+    if (Notification.permission === 'default') {
+      let p = 'default'; try { p = await Notification.requestPermission(); } catch (e) {}
+      if (p !== 'granted') { toast('未允許通知，無法開啟推播', 'error'); return; }
+      await enablePush(); return;
+    }
+    const sub = await getSub();
+    if (sub) await disablePush(sub); else await enablePush();
+    return;
+  }
+  if ('Notification' in window) { try { await Notification.requestPermission(); } catch (e) {} if (Notification.permission === 'granted') toast('已開啟到期通知（僅頁面開著時）', 'success'); }
 }
 
 /* ---------- 選單 ---------- */
@@ -882,7 +934,7 @@ $('menu').addEventListener('click', async e => {
   if (k === 'export') exportData();
   if (k === 'import') $('importFile').click();
   if (k === 'logout') { await db.auth.signOut(); await showSession(null); }
-  if (k === 'notify') { try { await Notification.requestPermission(); } catch (err) {} refreshNotifyItem(); if (Notification.permission === 'granted') toast('已開啟到期通知', 'success'); }
+  if (k === 'notify') await onNotifyClick();
 });
 $('importFile').addEventListener('change', e => importData(e.target.files[0]));
 
@@ -906,6 +958,7 @@ db.auth.onAuthStateChange((event, session) => {
 });
 
 /* ---------- 啟動 ---------- */
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
 $('sortBy').value = ui.sort;
 if (!VIEW_NAMES[ui.view]) ui.view = 'open';
 render();
