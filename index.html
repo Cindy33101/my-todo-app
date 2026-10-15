@@ -101,6 +101,9 @@ button.tag{border:0;font-family:inherit;cursor:pointer}
 .subrow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
 .subrow input[type=checkbox]{width:20px;height:20px;flex:0 0 20px;padding:0;accent-color:var(--accent)}
 .subrow .subtext{flex:1;min-width:0;padding:9px 11px}
+.subhandle{border:0;background:none;color:var(--muted);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:6px 2px;font-size:18px;line-height:1;min-width:26px;min-height:38px;letter-spacing:-2px}
+.subhandle:active{cursor:grabbing}
+.subrow.dragging{background:var(--soft);border-radius:10px;box-shadow:0 4px 14px #0003}
 .addsub{display:flex;gap:8px}
 .addsub input{width:auto;flex:1;min-width:0}
 body.noextra .extra-ui{display:none!important}
@@ -195,6 +198,7 @@ body.noextra .extra-ui{display:none!important}
     <div class="menuinfo" id="menuUser"></div>
     <button data-menu="refresh" role="menuitem">↻ 重新同步</button>
     <button data-menu="notify" id="notifyItem" role="menuitem">🔔 開啟背景推播</button>
+    <button data-menu="settings" id="settingsItem" role="menuitem">⏰ 提醒時間</button>
     <button data-menu="export" role="menuitem">⤓ 匯出備份</button>
     <button data-menu="import" role="menuitem">⤒ 匯入備份</button>
     <button data-menu="logout" class="danger-text" role="menuitem">登出</button>
@@ -267,7 +271,7 @@ body.noextra .extra-ui{display:none!important}
   <div class="sectionhead"><h2 id="listTitle">待辦事項</h2><span id="resultCount">0 項</span></div>
   <div id="taskList" class="tasklist"></div>
   <input id="importFile" type="file" accept="application/json,.json" class="hide">
-  <p class="foot">資料儲存在 Supabase 雲端，手機與電腦用同一個帳號即可同步。到期前 10 分鐘會提醒。要在沒開頁面時也收到通知，請按右上角 ⋯ → 開啟背景推播（iPhone 需先加入主畫面）。<br>標籤：輸入 <b>#標籤名</b>；子任務：在「更多選項」一行一項，或編輯待辦時加入，點待辦上的 ☑ 可展開勾選。<br>快捷鍵：<b>N</b> 新增　<b>/</b> 搜尋　<b>Esc</b> 關閉視窗</p>
+  <p class="foot">資料儲存在 Supabase 雲端，手機與電腦用同一個帳號即可同步。提醒時間可在右上角 ⋯ → 提醒時間 設定（預設到期前 10 分鐘）。要在沒開頁面時也收到通知，請按右上角 ⋯ → 開啟背景推播（iPhone 需先加入主畫面）。<br>標籤：輸入 <b>#標籤名</b>；子任務：在「更多選項」一行一項，或編輯待辦時加入，點待辦上的 ☑ 可展開勾選；編輯時可拖曳 ⋮⋮ 調整子任務順序。<br>快捷鍵：<b>N</b> 新增　<b>/</b> 搜尋　<b>Esc</b> 關閉視窗</p>
 </section>
 </main>
 
@@ -291,6 +295,15 @@ body.noextra .extra-ui{display:none!important}
   <div id="editMsg" class="notice" role="status"></div>
 </div></div>
 
+<div id="settingsModal" class="modal hide" role="dialog" aria-modal="true" aria-labelledby="settingsHead"><div class="modalbox">
+  <div class="modalhead"><h3 id="settingsHead">提醒設定</h3><button class="iconbtn" id="closeSettings" aria-label="關閉">✕</button></div>
+  <div class="field"><label for="remindSelect">到期提醒時間</label>
+    <select id="remindSelect"><option value="0">到期當下</option><option value="5">到期前 5 分鐘</option><option value="10">到期前 10 分鐘</option><option value="15">到期前 15 分鐘</option><option value="30">到期前 30 分鐘</option><option value="60">到期前 1 小時</option><option value="120">到期前 2 小時</option><option value="1440">到期前 1 天</option></select>
+    <small class="muted">頁面開著的提醒與背景推播都會套用，每筆待辦只提醒一次。</small></div>
+  <button id="saveRemind" class="btn primary wide">儲存</button>
+  <div id="settingsMsg" class="notice" role="status"></div>
+</div></div>
+
 <div id="pwModal" class="modal hide" role="dialog" aria-modal="true" aria-labelledby="pwHead"><div class="modalbox">
   <div class="modalhead"><h3 id="pwHead">設定新密碼</h3></div>
   <div class="field"><label for="newPw">新密碼（至少 6 碼）</label><input id="newPw" type="password" autocomplete="new-password"></div>
@@ -309,7 +322,15 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const $ = id => document.getElementById(id);
 const BUCKET = 'todo-attachments';
 const CATS = ['工作', '生活', '購物'];
-const REMIND_MIN = 10;
+let remindMin = (() => { try { const v = parseInt(localStorage.getItem('todo-remind'), 10); return Number.isFinite(v) ? v : 10; } catch (e) { return 10; } })();
+let settingsOk = true;
+const REMIND_LABELS = {0: '到期當下', 5: '到期前 5 分鐘', 10: '到期前 10 分鐘', 15: '到期前 15 分鐘', 30: '到期前 30 分鐘', 60: '到期前 1 小時', 120: '到期前 2 小時', 1440: '到期前 1 天'};
+const remindLabel = m => REMIND_LABELS[m] || `到期前 ${m} 分鐘`;
+function fmtMins(m) {
+  if (m >= 1440) { const d = Math.floor(m / 1440), h = Math.round((m % 1440) / 60); return h ? `${d} 天 ${h} 小時` : `${d} 天`; }
+  if (m >= 60) { const h = Math.floor(m / 60), r = m % 60; return r ? `${h} 小時 ${r} 分鐘` : `${h} 小時`; }
+  return `${m} 分鐘`;
+}
 const VAPID_PUBLIC_KEY = 'BMIPN-1CsXjtnTVrqEzCHPfmFBmdSADGzCwVldgRaKmyNdWPfbzmc12OP9nRabmuhjvtoTG1ovmNwV9jM91-wn0';
 const priorityRank = {'高':0, '普通':1, '低':2};
 const BUCKET_NAMES = ['已逾期', '今天', '明天', '未來 7 天', '更晚', '未排定日期'];
@@ -443,6 +464,30 @@ function updatePreview() {
   box.classList.toggle('hide', !chips.length);
 }
 
+/* ---------- 提醒設定 ---------- */
+async function loadSettings() {
+  const {data, error} = await db.from('user_settings').select('remind_minutes').eq('user_id', user.id).maybeSingle();
+  if (error) { settingsOk = false; return; }
+  settingsOk = true;
+  remindMin = data && Number.isFinite(data.remind_minutes) ? data.remind_minutes : 10;
+  try { localStorage.setItem('todo-remind', String(remindMin)); } catch (e) {}
+}
+function openSettings() {
+  $('remindSelect').value = String(remindMin);
+  if (![...$('remindSelect').options].some(o => o.value === String(remindMin))) $('remindSelect').value = '10';
+  msg('settingsMsg', settingsOk ? '' : '尚未建立 user_settings 資料表，目前只會套用在這個裝置的頁面內提醒，背景推播仍是 10 分鐘。', settingsOk ? '' : 'error');
+  $('settingsModal').classList.remove('hide'); $('remindSelect').focus();
+}
+async function saveRemind() {
+  const m = parseInt($('remindSelect').value, 10);
+  remindMin = m; try { localStorage.setItem('todo-remind', String(m)); } catch (e) {}
+  if (settingsOk) {
+    const {error} = await db.from('user_settings').upsert({user_id: user.id, remind_minutes: m, updated_at: new Date().toISOString()}, {onConflict: 'user_id'});
+    if (error) { settingsOk = false; msg('settingsMsg', '儲存到雲端失敗：' + error.message + '（已先套用在此裝置）', 'error'); return; }
+  }
+  $('settingsModal').classList.add('hide'); toast(`提醒時間已設為${remindLabel(m)}`, 'success'); checkReminders();
+}
+
 /* ---------- 登入 ---------- */
 async function showSession(session) {
   const wasUser = user;
@@ -451,7 +496,7 @@ async function showSession(session) {
   $('appPanel').classList.toggle('hide', !user);
   $('menuBtn').classList.toggle('hide', !user);
   $('menuUser').textContent = user?.email || '';
-  if (user) { setStatus('已登入，正在同步'); await loadTasks(); subscribe(); }
+  if (user) { setStatus('已登入，正在同步'); await loadSettings(); await loadTasks(); subscribe(); }
   else { unsubscribe(); tasks = []; render(); setStatus('尚未登入'); }
 }
 async function auth(mode) {
@@ -714,7 +759,7 @@ function renderTagPick(boxId, inputId) {
 }
 function renderTagPicks() { renderTagPick('newTagPick', 'newTags'); renderTagPick('editTagPick', 'editTags'); }
 function renderEditSubs() {
-  $('editSubs').innerHTML = editSubsArr.map((x, i) => `<div class="subrow"><input type="checkbox" data-sub-chk="${i}" ${x.done ? 'checked' : ''} aria-label="完成"><input type="text" class="subtext" data-sub-txt="${i}" value="${escapeHtml(x.text)}" maxlength="200" aria-label="子任務內容"><button type="button" class="iconbtn" data-sub-del="${i}" aria-label="刪除子任務">✕</button></div>`).join('');
+  $('editSubs').innerHTML = editSubsArr.map((x, i) => `<div class="subrow" data-i="${i}"><button type="button" class="subhandle" data-sub-handle="${i}" aria-label="拖曳排序，也可用上下方向鍵" title="拖曳排序">⋮⋮</button><input type="checkbox" data-sub-chk="${i}" ${x.done ? 'checked' : ''} aria-label="完成"><input type="text" class="subtext" data-sub-txt="${i}" value="${escapeHtml(x.text)}" maxlength="200" aria-label="子任務內容"><button type="button" class="iconbtn" data-sub-del="${i}" aria-label="刪除子任務">✕</button></div>`).join('');
 }
 function addEditSub() {
   const el = $('editSubNew'), text = el.value.trim().slice(0, 200);
@@ -889,9 +934,9 @@ function checkReminders() {
   tasks.forEach(t => {
     if (t.completed || !t.due_at) return;
     const due = new Date(t.due_at).getTime(), key = t.id + '|' + t.due_at;
-    if (seen[key] || due - now > REMIND_MIN * 60000 || now - due > 60 * 60000) return;
+    if (seen[key] || due - now > remindMin * 60000 || now - due > 60 * 60000) return;
     seen[key] = now; changed = true;
-    const when = due > now ? `${Math.max(1, Math.round((due - now) / 60000))} 分鐘後到期` : '已到期';
+    const when = due > now ? `${fmtMins(Math.max(1, Math.round((due - now) / 60000)))}後到期` : '已到期';
     toast(`⏰ ${t.title}（${when}）`, {ttl: 10000});
     let pushOn = false; try { pushOn = localStorage.getItem('todo-push') === '1'; } catch (e) {}
     if (!pushOn && 'Notification' in window && Notification.permission === 'granted') { try { new Notification('待辦提醒', {body: `${t.title}（${when}）`, tag: String(t.id)}); } catch (e) {} }
@@ -956,7 +1001,7 @@ async function onNotifyClick() {
 
 /* ---------- 選單 ---------- */
 function closeMenu() { $('menu').classList.add('hide'); $('menuBtn').setAttribute('aria-expanded', 'false'); }
-function toggleMenu() { const open = $('menu').classList.toggle('hide') === false; $('menuBtn').setAttribute('aria-expanded', open); if (open) refreshNotifyItem(); }
+function toggleMenu() { const open = $('menu').classList.toggle('hide') === false; $('menuBtn').setAttribute('aria-expanded', open); if (open) { refreshNotifyItem(); $('settingsItem').textContent = `⏰ 提醒時間：${remindLabel(remindMin)}`; } }
 
 /* ---------- 事件 ---------- */
 $('loginBtn').addEventListener('click', () => auth('login'));
@@ -1027,6 +1072,43 @@ $('editSubs').addEventListener('input', e => { const i = e.target.dataset.subTxt
 $('editSubs').addEventListener('change', e => { const i = e.target.dataset.subChk; if (i !== undefined && editSubsArr[i]) editSubsArr[i].done = e.target.checked; });
 $('editSubs').addEventListener('click', e => { const b = e.target.closest('button[data-sub-del]'); if (!b) return; editSubsArr.splice(+b.dataset.subDel, 1); renderEditSubs(); });
 $('editSubAdd').addEventListener('click', addEditSub);
+let subDrag = null;
+function moveSub(from, to) {
+  if (to < 0 || to >= editSubsArr.length || from === to) return;
+  const [x] = editSubsArr.splice(from, 1); editSubsArr.splice(to, 0, x); renderEditSubs();
+  const h = $('editSubs').querySelector(`[data-sub-handle="${to}"]`); if (h) h.focus();
+}
+$('editSubs').addEventListener('pointerdown', e => {
+  const h = e.target.closest('.subhandle'); if (!h) return;
+  e.preventDefault();
+  try { h.setPointerCapture(e.pointerId); } catch (err) {}
+  subDrag = {row: h.closest('.subrow'), pid: e.pointerId}; subDrag.row.classList.add('dragging');
+});
+$('editSubs').addEventListener('pointermove', e => {
+  if (!subDrag || e.pointerId !== subDrag.pid) return;
+  const host = $('editSubs'), rows = [...host.querySelectorAll('.subrow')].filter(r => r !== subDrag.row);
+  let before = null;
+  for (const r of rows) { const b = r.getBoundingClientRect(); if (e.clientY < b.top + b.height / 2) { before = r; break; } }
+  if (before) { if (subDrag.row.nextElementSibling !== before) host.insertBefore(subDrag.row, before); }
+  else if (host.lastElementChild !== subDrag.row) host.appendChild(subDrag.row);
+});
+function endSubDrag(e) {
+  if (!subDrag || (e && e.pointerId !== subDrag.pid)) return;
+  subDrag.row.classList.remove('dragging');
+  const order = [...$('editSubs').querySelectorAll('.subrow')].map(r => +r.dataset.i);
+  subDrag = null; editSubsArr = order.map(i => editSubsArr[i]); renderEditSubs();
+}
+$('editSubs').addEventListener('pointerup', endSubDrag);
+$('editSubs').addEventListener('pointercancel', endSubDrag);
+$('editSubs').addEventListener('keydown', e => {
+  const h = e.target.closest('.subhandle'); if (!h) return;
+  const i = +h.dataset.subHandle;
+  if (e.key === 'ArrowUp') { e.preventDefault(); moveSub(i, i - 1); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); moveSub(i, i + 1); }
+});
+$('saveRemind').addEventListener('click', saveRemind);
+$('closeSettings').addEventListener('click', () => $('settingsModal').classList.add('hide'));
+$('settingsModal').addEventListener('click', e => { if (e.target === $('settingsModal')) $('settingsModal').classList.add('hide'); });
 $('editSubNew').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); addEditSub(); } });
 $('saveEdit').addEventListener('click', saveEdit);
 $('editTitle').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) saveEdit(); });
@@ -1058,14 +1140,15 @@ $('menu').addEventListener('click', async e => {
   if (k === 'import') $('importFile').click();
   if (k === 'logout') { await db.auth.signOut(); await showSession(null); }
   if (k === 'notify') await onNotifyClick();
+  if (k === 'settings') openSettings();
 });
 $('importFile').addEventListener('change', e => importData(e.target.files[0]));
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeMenu(); $('editModal').classList.add('hide'); return; }
+  if (e.key === 'Escape') { closeMenu(); $('editModal').classList.add('hide'); $('settingsModal').classList.add('hide'); return; }
   if (e.metaKey || e.ctrlKey || e.altKey || !user) return;
   const tag = (document.activeElement && document.activeElement.tagName) || '';
-  if (/INPUT|TEXTAREA|SELECT/.test(tag) || !$('editModal').classList.contains('hide') || !$('pwModal').classList.contains('hide')) return;
+  if (/INPUT|TEXTAREA|SELECT/.test(tag) || !$('editModal').classList.contains('hide') || !$('settingsModal').classList.contains('hide') || !$('pwModal').classList.contains('hide')) return;
   if (e.key === 'n' || e.key === 'N') { e.preventDefault(); $('newTitle').focus(); }
   if (e.key === '/') { e.preventDefault(); $('searchText').focus(); }
 });
