@@ -84,6 +84,27 @@ button{cursor:pointer}
 .tag.late{background:var(--latebg);color:var(--late)}
 .tag.parsed{background:var(--soft);font-size:12.5px;padding:5px 9px}
 
+/* 標籤 / 子任務 */
+button.tag{border:0;font-family:inherit;cursor:pointer}
+.tag.hash{background:var(--soft);color:var(--ink)}
+.tag.prog{background:var(--greenbg);color:var(--green)}
+.tag.prog.full{background:var(--green);color:var(--card)}
+.tagpick{display:flex;flex-wrap:wrap;gap:6px}
+.tagrow{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 6px;align-items:center}
+.tagrow:empty{display:none}
+.tagrow .lbl{font-size:12px;color:var(--muted)}
+.chip small{color:var(--muted)}
+.subs{list-style:none;margin:9px 0 0;padding:0;display:grid;gap:2px}
+.subs li label{display:flex;align-items:flex-start;gap:9px;padding:5px 2px;min-height:32px;font-size:14.5px;cursor:pointer;line-height:1.45}
+.subs li input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--accent)}
+.subs li.done span{color:var(--muted);text-decoration:line-through}
+.subrow{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.subrow input[type=checkbox]{width:20px;height:20px;flex:0 0 20px;padding:0;accent-color:var(--accent)}
+.subrow .subtext{flex:1;min-width:0;padding:9px 11px}
+.addsub{display:flex;gap:8px}
+.addsub input{width:auto;flex:1;min-width:0}
+body.noextra .extra-ui{display:none!important}
+
 /* 檢視分頁 */
 .tabs{display:flex;gap:7px;overflow-x:auto;padding:2px 0 8px;margin:0 -2px;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
@@ -198,7 +219,7 @@ button{cursor:pointer}
       <button id="addBtn" class="btn primary">新增</button>
     </div>
     <div id="parsePreview" class="preview hide" aria-live="polite"></div>
-    <p class="hint" id="quickHint">可直接輸入日期時間：今天／明天／下週三／10/20／3點半／每週…；<b>#工作</b> 指定分類、<b>!高</b> 指定優先順序。</p>
+    <p class="hint" id="quickHint">可直接輸入日期時間：今天／明天／下週三／10/20／3點半／每週…；<b>#工作</b> 指定分類、其他 <b>#文字</b> 會變成標籤、<b>!高</b> 指定優先順序。</p>
     <div class="more">
       <button type="button" class="morebtn" id="moreBtn" aria-expanded="false">＋ 更多選項（分類、日期、備註、附件）</button>
       <div id="moreBox" class="hide">
@@ -211,6 +232,8 @@ button{cursor:pointer}
           <div class="quickdates" data-target="newDue"><button type="button" class="chip" data-q="today">今天</button><button type="button" class="chip" data-q="tomorrow">明天</button><button type="button" class="chip" data-q="weekend">本週末</button><button type="button" class="chip" data-q="nextmon">下週一</button><button type="button" class="chip" data-q="clear">清除</button></div>
         </div>
         <div class="field"><label for="newNotes">備註</label><textarea id="newNotes" rows="2" placeholder="補充說明（選填）"></textarea></div>
+        <div class="field extra-ui"><label for="newTags">標籤</label><input id="newTags" maxlength="120" autocomplete="off" placeholder="例如：緊急 等回覆（空白或逗號分隔，不必加 #）"><div class="tagpick" id="newTagPick"></div></div>
+        <div class="field extra-ui"><label for="newSubs">子任務（檢查清單，一行一項）</label><textarea id="newSubs" rows="3" placeholder="一行一項，例如：&#10;訂場地&#10;通知同事"></textarea></div>
         <div class="field"><label for="newFiles">附件（圖片或檔案，可複選）</label><input id="newFiles" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.ppt,.pptx"><div id="newFileList"></div><small class="muted">單一檔案上限 10 MB；圖片會自動壓縮後上傳。可按 ✕ 移除已選檔案。</small></div>
       </div>
     </div>
@@ -230,6 +253,8 @@ button{cursor:pointer}
     <input class="grow" id="searchText" type="search" placeholder="搜尋標題或備註…（按 / 快速搜尋）" aria-label="搜尋">
   </div>
 
+  <div class="tagrow" id="tagChips" aria-label="標籤篩選"></div>
+
   <section class="panel calendar" aria-label="月份月曆">
     <div class="calendarhead"><h2 id="calendarMonth">月份月曆</h2><div class="calendar-nav"><button type="button" id="calToggle" aria-expanded="true">收合</button><button type="button" id="prevMonth" aria-label="上個月">‹</button><button type="button" id="todayMonth">今天</button><button type="button" id="nextMonth" aria-label="下個月">›</button></div></div>
     <div class="calbody" id="calBody">
@@ -242,7 +267,7 @@ button{cursor:pointer}
   <div class="sectionhead"><h2 id="listTitle">待辦事項</h2><span id="resultCount">0 項</span></div>
   <div id="taskList" class="tasklist"></div>
   <input id="importFile" type="file" accept="application/json,.json" class="hide">
-  <p class="foot">資料儲存在 Supabase 雲端，手機與電腦用同一個帳號即可同步。到期前 10 分鐘會提醒。要在沒開頁面時也收到通知，請按右上角 ⋯ → 開啟背景推播（iPhone 需先加入主畫面）。<br>快捷鍵：<b>N</b> 新增　<b>/</b> 搜尋　<b>Esc</b> 關閉視窗</p>
+  <p class="foot">資料儲存在 Supabase 雲端，手機與電腦用同一個帳號即可同步。到期前 10 分鐘會提醒。要在沒開頁面時也收到通知，請按右上角 ⋯ → 開啟背景推播（iPhone 需先加入主畫面）。<br>標籤：輸入 <b>#標籤名</b>；子任務：在「更多選項」一行一項，或編輯待辦時加入，點待辦上的 ☑ 可展開勾選。<br>快捷鍵：<b>N</b> 新增　<b>/</b> 搜尋　<b>Esc</b> 關閉視窗</p>
 </section>
 </main>
 
@@ -259,6 +284,8 @@ button{cursor:pointer}
     <div class="quickdates" data-target="editDue"><button type="button" class="chip" data-q="today">今天</button><button type="button" class="chip" data-q="tomorrow">明天</button><button type="button" class="chip" data-q="weekend">本週末</button><button type="button" class="chip" data-q="nextmon">下週一</button><button type="button" class="chip" data-q="clear">清除</button></div>
   </div>
   <div class="field"><label for="editNotes">備註</label><textarea id="editNotes" rows="3" placeholder="補充說明（選填）"></textarea></div>
+  <div class="field extra-ui"><label for="editTags">標籤</label><input id="editTags" maxlength="120" autocomplete="off" placeholder="例如：緊急 等回覆（空白或逗號分隔）"><div class="tagpick" id="editTagPick"></div></div>
+  <div class="field extra-ui"><label for="editSubNew">子任務（檢查清單）</label><div id="editSubs"></div><div class="addsub"><input id="editSubNew" maxlength="200" placeholder="新增子任務，按 Enter 加入" autocomplete="off"><button type="button" class="chip" id="editSubAdd">加入</button></div></div>
   <div class="field"><label for="editFiles">新增附件</label><input id="editFiles" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.ppt,.pptx"><div id="editFileList"></div><div id="existingAttachments"></div></div>
   <button id="saveEdit" class="btn primary wide">儲存修改</button>
   <div id="editMsg" class="notice" role="status"></div>
@@ -292,7 +319,9 @@ let user = null, tasks = [], busy = false, lastWrite = 0, lastLoad = 0, channel 
 let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedDate = '';
 let editAtt = [], editRemoved = [], newPending = [], editPending = [];
-const ui = Object.assign({view:'open', cat:'全部', sort:'smart', calOpen: window.innerWidth > 520}, (() => { try { return JSON.parse(localStorage.getItem('todo-ui') || '{}'); } catch (e) { return {}; } })());
+let editSubsArr = [], extraOk = true, extraWarned = false;
+const expanded = new Set();
+const ui = Object.assign({view:'open', cat:'全部', tag:'', sort:'smart', calOpen: window.innerWidth > 520}, (() => { try { return JSON.parse(localStorage.getItem('todo-ui') || '{}'); } catch (e) { return {}; } })());
 const saveUi = () => { try { localStorage.setItem('todo-ui', JSON.stringify(ui)); } catch (e) {} };
 
 /* ---------- 工具 ---------- */
@@ -336,7 +365,8 @@ function parseQuick(input, nowArg) {
   const out = {};
   const take = (re, fn) => { const m = s.match(re); if (!m) return false; s = s.replace(m[0], ' '); fn(m); return true; };
 
-  take(/[#＃](工作|生活|購物)/, m => { out.category = m[1]; });
+  out.tags = [];
+  s = s.replace(/[#＃]([^\s#＃!！]+)/g, (m, w) => { if (['工作', '生活', '購物'].includes(w) && !out.category) out.category = w; else out.tags.push(w); return ' '; });
   take(/[!！](高|低|普通|中)/, m => { out.priority = m[1] === '中' ? '普通' : m[1]; });
 
   let d = null, period = '', h = null, mi = 0, weeklyWd = null;
@@ -406,6 +436,7 @@ function updatePreview() {
   if (p.due) chips.push(`📅 ${niceDate(p.due.toISOString())}`);
   else if (selectedDate) chips.push(`📅 ${selectedDate.slice(5).replace('-', '/')} 18:00（月曆選取日）`);
   if (p.category) chips.push(`🏷 ${p.category}`);
+  (p.tags || []).forEach(g => chips.push(`# ${g}`));
   if (p.priority) chips.push(`⚑ ${p.priority}優先`);
   if (p.repeat) chips.push(`↻ ${p.repeat}`);
   box.innerHTML = chips.map(c => `<span class="tag parsed">${escapeHtml(c)}</span>`).join('');
@@ -458,6 +489,7 @@ async function loadTasks(silent) {
   const {data, error} = await db.from('tasks').select('*').order('created_at', {ascending: false});
   if (error) { setStatus('同步失敗', 'bad'); if (!silent) toast('讀取雲端失敗：' + error.message, 'error'); return; }
   tasks = data || []; lastLoad = Date.now();
+  if (tasks.length) setExtra('tags' in tasks[0] && 'subtasks' in tasks[0]);
   setStatus('雲端已同步', 'ok'); render(); checkReminders();
 }
 function subscribe() {
@@ -494,7 +526,8 @@ function visibleTasks() {
   const q = $('searchText').value.trim().toLowerCase();
   let list = tasks.filter(t => inView(t, ui.view));
   if (ui.cat !== '全部') list = list.filter(t => t.category === ui.cat);
-  if (q) list = list.filter(t => ((t.title || '') + ' ' + (t.notes || '')).toLowerCase().includes(q));
+  if (q) list = list.filter(t => ((t.title || '') + ' ' + (t.notes || '') + ' ' + (t.tags || []).map(g => '#' + g).join(' ') + ' ' + (t.subtasks || []).map(x => x.text).join(' ')).toLowerCase().includes(q));
+  if (ui.tag) list = list.filter(t => (t.tags || []).includes(ui.tag));
   if (selectedDate) list = list.filter(t => t.due_at && dayKey(t.due_at) === selectedDate);
   const pr = t => priorityRank[t.priority] ?? 1;
   const dueCmp = (a, b) => (a.due_at || '9999').localeCompare(b.due_at || '9999');
@@ -522,13 +555,17 @@ function taskHtml(t) {
   const overdue = t.due_at && !t.completed && new Date(t.due_at) < now;
   const pc = t.priority === '高' ? 'p-high' : t.priority === '低' ? 'p-low' : '';
   const atts = t.attachments || [];
-  return `<article class="task ${pc} ${t.completed ? 'done' : ''}" data-id="${escapeHtml(t.id)}">
-<input class="check" type="checkbox" aria-label="標記完成：${escapeHtml(t.title)}" data-action="toggle" data-id="${escapeHtml(t.id)}" ${t.completed ? 'checked' : ''}>
-<div class="taskmain"><div class="tasktitle" data-action="edit" data-id="${escapeHtml(t.id)}">${escapeHtml(t.title)}</div>
-<div class="meta"><span class="tag">${escapeHtml(t.category || '生活')}</span>${t.priority === '高' ? '<span class="tag high">高優先</span>' : t.priority === '低' ? '<span class="tag">低優先</span>' : ''}${t.due_at ? `<span class="tag ${overdue ? 'late' : 'due'}">${overdue ? '已逾期 · ' : ''}${escapeHtml(niceDate(t.due_at))}</span>` : ''}${t.repeat_type && t.repeat_type !== '不重複' ? `<span class="tag">↻ ${escapeHtml(t.repeat_type)}</span>` : ''}</div>
+  const subs = Array.isArray(t.subtasks) ? t.subtasks : [];
+  const tags = Array.isArray(t.tags) ? t.tags : [];
+  const doneN = subs.filter(x => x.done).length, open = expanded.has(String(t.id)), id = escapeHtml(t.id);
+  return `<article class="task ${pc} ${t.completed ? 'done' : ''}" data-id="${id}">
+<input class="check" type="checkbox" aria-label="標記完成：${escapeHtml(t.title)}" data-action="toggle" data-id="${id}" ${t.completed ? 'checked' : ''}>
+<div class="taskmain"><div class="tasktitle" data-action="edit" data-id="${id}">${escapeHtml(t.title)}</div>
+<div class="meta"><span class="tag">${escapeHtml(t.category || '生活')}</span>${t.priority === '高' ? '<span class="tag high">高優先</span>' : t.priority === '低' ? '<span class="tag">低優先</span>' : ''}${t.due_at ? `<span class="tag ${overdue ? 'late' : 'due'}">${overdue ? '已逾期 · ' : ''}${escapeHtml(niceDate(t.due_at))}</span>` : ''}${t.repeat_type && t.repeat_type !== '不重複' ? `<span class="tag">↻ ${escapeHtml(t.repeat_type)}</span>` : ''}${subs.length ? `<button type="button" class="tag prog ${doneN === subs.length ? 'full' : ''}" data-action="subs" data-id="${id}" aria-expanded="${open}" aria-label="子任務 ${doneN}/${subs.length}，點擊${open ? '收合' : '展開'}">☑ ${doneN}/${subs.length} ${open ? '▴' : '▾'}</button>` : ''}${tags.map(g => `<button type="button" class="tag hash" data-tag="${escapeHtml(g)}" aria-label="篩選標籤 ${escapeHtml(g)}">#${escapeHtml(g)}</button>`).join('')}</div>
+${subs.length && open ? `<ul class="subs">${subs.map(x => `<li class="${x.done ? 'done' : ''}"><label><input type="checkbox" data-action="subtoggle" data-id="${id}" data-sid="${escapeHtml(x.id)}" ${x.done ? 'checked' : ''}><span>${escapeHtml(x.text)}</span></label></li>`).join('')}</ul>` : ''}
 ${t.notes ? `<p class="muted notes">${escapeHtml(t.notes)}</p>` : ''}
 ${atts.length ? `<div class="meta">${atts.map(a => `<a class="tag" href="#" data-attachment-path="${escapeHtml(a.path || '')}" data-legacy-url="${escapeHtml(!a.path ? (a.url || '') : '')}">📎 ${escapeHtml(a.name || '附件')}</a>`).join('')}</div>` : ''}</div>
-<div class="taskactions"><button class="iconbtn" data-action="edit" data-id="${escapeHtml(t.id)}" aria-label="編輯">✎</button><button class="iconbtn" data-action="delete" data-id="${escapeHtml(t.id)}" aria-label="刪除">⌫</button></div></article>`;
+<div class="taskactions"><button class="iconbtn" data-action="edit" data-id="${id}" aria-label="編輯">✎</button><button class="iconbtn" data-action="delete" data-id="${id}" aria-label="刪除">⌫</button></div></article>`;
 }
 function renderTabs() {
   const c = {open:0, today:0, overdue:0, week:0, done:0};
@@ -566,13 +603,13 @@ function renderCalendar() {
   $('clearDate').textContent = selectedDate ? '清除日期選取' : '顯示所有日期';
 }
 function render() {
-  renderTabs(); renderCalendar();
+  renderTabs(); renderTagChips(); renderCalendar(); renderTagPicks();
   const list = visibleTasks();
   $('listTitle').textContent = (selectedDate ? selectedDate.slice(5).replace('-', '/') + ' · ' : '') + VIEW_NAMES[ui.view];
   $('resultCount').textContent = `${list.length} 項`;
   const host = $('taskList');
   if (!list.length) {
-    const filtered = $('searchText').value.trim() || ui.cat !== '全部' || selectedDate;
+    const filtered = $('searchText').value.trim() || ui.cat !== '全部' || ui.tag || selectedDate;
     host.innerHTML = `<div class="empty">${filtered ? '沒有符合條件的待辦事項。<br>試著清除搜尋、分類或日期篩選。' : EMPTY[ui.view]}</div>`;
     return;
   }
@@ -628,8 +665,74 @@ function renderPending(listId, arr) {
 function removeFiles(paths) { paths = (paths || []).filter(Boolean); if (paths.length) db.storage.from(BUCKET).remove(paths).catch(() => {}); }
 
 /* ---------- 新增 / 修改 / 刪除 ---------- */
+/* ---------- 標籤 / 子任務 / 欄位相容 ---------- */
+const EXTRA_KEYS = ['subtasks', 'tags'];
+const noExtra = o => { const r = {...o}; EXTRA_KEYS.forEach(k => delete r[k]); return r; };
+function setExtra(ok) {
+  extraOk = ok; document.body.classList.toggle('noextra', !ok);
+  if (!ok && !extraWarned) { extraWarned = true; toast('尚未新增「子任務／標籤」欄位，請先到 Supabase 執行設定教學中的 SQL', {kind: 'error', ttl: 9000}); }
+}
+async function dbInsert(payload) {
+  const run = p => db.from('tasks').insert(p).select().single();
+  let r = await run(extraOk ? payload : noExtra(payload));
+  if (r.error && extraOk && /subtasks|tags/.test(r.error.message || '')) { setExtra(false); r = await run(noExtra(payload)); }
+  return r;
+}
+async function dbUpdate(id, patch) {
+  const run = p => db.from('tasks').update(p).eq('id', id).select().single();
+  let r = await run(extraOk ? patch : noExtra(patch));
+  if (r.error && extraOk && /subtasks|tags/.test(r.error.message || '')) { setExtra(false); r = await run(noExtra(patch)); }
+  return r;
+}
+const rid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+const normTag = x => String(x).replace(/^[#＃]+/, '').trim().slice(0, 20);
+function normTags(arr) {
+  const seen = new Set(), out = [];
+  (arr || []).forEach(x => { const g = normTag(x), k = g.toLowerCase(); if (g && !seen.has(k) && out.length < 8) { seen.add(k); out.push(g); } });
+  return out;
+}
+const parseTagsInput = str => String(str || '').split(/[\s,，、]+/).filter(Boolean);
+function cleanSubs(arr) {
+  return (Array.isArray(arr) ? arr : []).map(x => ({id: String((x && x.id) || rid()), text: String((x && x.text) || '').trim().slice(0, 200), done: !!(x && x.done)})).filter(x => x.text).slice(0, 30);
+}
+const parseSubsText = text => cleanSubs(String(text || '').split(/\r?\n/).map(l => ({text: l.replace(/^\s*(?:[-*•·☐☑]|\[[ xX]?\]|\d+[.)、])\s*/, '')})));
+function allTags() {
+  const m = new Map();
+  tasks.forEach(t => (t.tags || []).forEach(g => m.set(g, (m.get(g) || 0) + 1)));
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hant'));
+}
+function renderTagChips() {
+  const box = $('tagChips'), list = allTags();
+  if (ui.tag && !list.some(([g]) => g === ui.tag)) { ui.tag = ''; saveUi(); }
+  if (!list.length) { box.innerHTML = ''; return; }
+  box.innerHTML = '<span class="lbl">標籤</span>' + list.map(([g, n]) => `<button type="button" class="chip ${ui.tag === g ? 'active' : ''}" data-tagf="${escapeHtml(g)}" aria-pressed="${ui.tag === g}">#${escapeHtml(g)} <small>${n}</small></button>`).join('');
+}
+function renderTagPick(boxId, inputId) {
+  const cur = new Set(parseTagsInput($(inputId).value).map(x => normTag(x).toLowerCase()));
+  const list = allTags().filter(([g]) => !cur.has(g.toLowerCase())).slice(0, 8);
+  $(boxId).innerHTML = list.map(([g]) => `<button type="button" class="chip" data-pick="${escapeHtml(g)}">#${escapeHtml(g)}</button>`).join('');
+}
+function renderTagPicks() { renderTagPick('newTagPick', 'newTags'); renderTagPick('editTagPick', 'editTags'); }
+function renderEditSubs() {
+  $('editSubs').innerHTML = editSubsArr.map((x, i) => `<div class="subrow"><input type="checkbox" data-sub-chk="${i}" ${x.done ? 'checked' : ''} aria-label="完成"><input type="text" class="subtext" data-sub-txt="${i}" value="${escapeHtml(x.text)}" maxlength="200" aria-label="子任務內容"><button type="button" class="iconbtn" data-sub-del="${i}" aria-label="刪除子任務">✕</button></div>`).join('');
+}
+function addEditSub() {
+  const el = $('editSubNew'), text = el.value.trim().slice(0, 200);
+  if (!text) return;
+  if (editSubsArr.length >= 30) { toast('子任務最多 30 項', 'error'); return; }
+  editSubsArr.push({id: rid(), text, done: false}); el.value = ''; renderEditSubs(); el.focus();
+}
+async function toggleSub(id, sid, checked) {
+  const t = byId(id); if (!t) return;
+  const x = (t.subtasks || []).find(y => y.id === sid); if (!x) return;
+  const prev = x.done; x.done = checked; render(); lastWrite = Date.now();
+  const {error} = await dbUpdate(t.id, {subtasks: t.subtasks, updated_at: new Date().toISOString()});
+  if (error) { x.done = prev; render(); toast('更新失敗：' + error.message, 'error'); return; }
+  if (checked && !t.completed && t.subtasks.length && t.subtasks.every(y => y.done)) toast('子任務都完成了', {label: '完成待辦', fn: () => toggleTask(t.id, true), ttl: 7000});
+}
+
 function resetComposer() {
-  $('newTitle').value = ''; $('newDue').value = ''; $('newCategory').value = '生活'; $('newPriority').value = '普通'; $('newRepeat').value = '不重複'; $('newNotes').value = ''; $('newFiles').value = ''; newPending = []; renderPending('newFileList', newPending);
+  $('newTitle').value = ''; $('newDue').value = ''; $('newCategory').value = '生活'; $('newPriority').value = '普通'; $('newRepeat').value = '不重複'; $('newNotes').value = ''; $('newTags').value = ''; $('newSubs').value = ''; $('newFiles').value = ''; newPending = []; renderPending('newFileList', newPending);
   updatePreview();
   if (window.matchMedia('(pointer:fine)').matches) $('newTitle').focus();
 }
@@ -641,12 +744,13 @@ async function addTask() {
   let due = p.due || ($('newDue').value ? new Date($('newDue').value) : null);
   if (!due && selectedDate) { const [y, m, d] = selectedDate.split('-').map(Number); due = new Date(y, m - 1, d, 18, 0); }
   const payload = {user_id: user.id, title: p.title, category: p.category || $('newCategory').value, priority: p.priority || $('newPriority').value,
-    due_at: due && !Number.isNaN(due.getTime()) ? due.toISOString() : null, repeat_type: p.repeat || $('newRepeat').value, completed: false, notes: $('newNotes').value.trim(), attachments: []};
+    due_at: due && !Number.isNaN(due.getTime()) ? due.toISOString() : null, repeat_type: p.repeat || $('newRepeat').value, completed: false, notes: $('newNotes').value.trim(), attachments: [],
+    tags: normTags((p.tags || []).concat(parseTagsInput($('newTags').value))), subtasks: parseSubsText($('newSubs').value)};
   busy = true; $('addBtn').disabled = true;
   let uploaded = [];
   try {
     uploaded = await uploadAttachments(newPending, 'appMsg'); payload.attachments = uploaded;
-    const {data, error} = await db.from('tasks').insert(payload).select().single();
+    const {data, error} = await dbInsert(payload);
     if (error) throw error;
     lastWrite = Date.now(); tasks.unshift(data);
     if (ui.view === 'done') { ui.view = 'open'; saveUi(); }
@@ -680,7 +784,7 @@ async function spawnNext(t) {
   const iso = due ? due.toISOString() : null;
   if (tasks.some(x => !x.completed && x.title === t.title && x.repeat_type === t.repeat_type && (x.due_at || null) === iso)) return null;
   lastWrite = Date.now();
-  const {data, error} = await db.from('tasks').insert({user_id: user.id, title: t.title, category: t.category, priority: t.priority, due_at: iso, repeat_type: t.repeat_type, completed: false, notes: t.notes || '', attachments: []}).select().single();
+  const {data, error} = await dbInsert({user_id: user.id, title: t.title, category: t.category, priority: t.priority, due_at: iso, repeat_type: t.repeat_type, completed: false, notes: t.notes || '', attachments: [], tags: t.tags || [], subtasks: (t.subtasks || []).map(x => ({...x, done: false}))});
   if (error) { toast('原事項已完成，但建立下一次重複事項失敗：' + error.message, 'error'); return null; }
   tasks.unshift(data); render(); return data;
 }
@@ -717,18 +821,19 @@ function openEdit(id) {
   $('editId').value = t.id; $('editTitle').value = t.title; $('editCategory').value = t.category || '生活'; $('editPriority').value = t.priority || '普通';
   $('editDue').value = dateToInput(t.due_at); $('editRepeat').value = t.repeat_type || '不重複'; $('editNotes').value = t.notes || ''; $('editFiles').value = ''; editPending = []; renderPending('editFileList', editPending);
   editAtt = (t.attachments || []).slice(); editRemoved = []; renderEditAttachments();
+  $('editTags').value = (t.tags || []).join(' '); editSubsArr = cleanSubs(t.subtasks); $('editSubNew').value = ''; renderEditSubs(); renderTagPicks();
   msg('editMsg', ''); $('editModal').classList.remove('hide'); $('editTitle').focus();
 }
 async function saveEdit() {
   const id = $('editId').value, title = $('editTitle').value.trim();
   if (!title) { msg('editMsg', '事項不能空白。', 'error'); return; }
-  $('saveEdit').disabled = true;
+  addEditSub(); $('saveEdit').disabled = true;
   let uploaded = [];
   try {
     uploaded = await uploadAttachments(editPending, 'editMsg');
-    const patch = {title, category: $('editCategory').value, priority: $('editPriority').value, due_at: inputToIso($('editDue').value), repeat_type: $('editRepeat').value, notes: $('editNotes').value.trim(), attachments: editAtt.concat(uploaded), updated_at: new Date().toISOString()};
+    const patch = {title, category: $('editCategory').value, priority: $('editPriority').value, due_at: inputToIso($('editDue').value), repeat_type: $('editRepeat').value, notes: $('editNotes').value.trim(), attachments: editAtt.concat(uploaded), tags: normTags(parseTagsInput($('editTags').value)), subtasks: cleanSubs(editSubsArr), updated_at: new Date().toISOString()};
     lastWrite = Date.now();
-    const {data, error} = await db.from('tasks').update(patch).eq('id', id).select().single();
+    const {data, error} = await dbUpdate(id, patch);
     if (error) throw error;
     removeFiles(editRemoved.map(a => a.path));
     const i = tasks.findIndex(x => sameId(x.id, id)); if (i >= 0) tasks[i] = data;
@@ -763,11 +868,12 @@ async function importData(file) {
     if (!Array.isArray(data)) throw Error('檔案格式不正確');
     const rows = data.filter(t => t && typeof t.title === 'string' && t.title.trim()).map(t => ({user_id: user.id, title: t.title, category: CATS.includes(t.category) ? t.category : '生活',
       priority: ['高', '普通', '低'].includes(t.priority) ? t.priority : '普通', due_at: t.due_at || null, completed: !!t.completed,
-      repeat_type: ['每天', '每週', '每月', '不重複'].includes(t.repeat_type) ? t.repeat_type : '不重複', notes: typeof t.notes === 'string' ? t.notes : '', attachments: Array.isArray(t.attachments) ? t.attachments : []}));
+      repeat_type: ['每天', '每週', '每月', '不重複'].includes(t.repeat_type) ? t.repeat_type : '不重複', notes: typeof t.notes === 'string' ? t.notes : '', attachments: Array.isArray(t.attachments) ? t.attachments : [],
+      tags: normTags(Array.isArray(t.tags) ? t.tags : []), subtasks: cleanSubs(t.subtasks)}));
     if (!rows.length) throw Error('沒有可匯入的待辦事項');
     if (!confirm(`將匯入 ${rows.length} 項待辦，是否繼續？`)) return;
     lastWrite = Date.now();
-    const {error} = await db.from('tasks').insert(rows);
+    const {error} = await db.from('tasks').insert(extraOk ? rows : rows.map(noExtra));
     if (error) throw error;
     toast(`已匯入 ${rows.length} 項`, 'success'); await loadTasks(true);
   } catch (e) { toast('匯入失敗：' + (e.message || '檔案讀取錯誤'), 'error'); }
@@ -884,9 +990,16 @@ $('calendarGrid').addEventListener('click', e => {
   render(); updatePreview();
 });
 
-$('taskList').addEventListener('change', e => { if (e.target.dataset.action === 'toggle') toggleTask(e.target.dataset.id, e.target.checked); });
+$('taskList').addEventListener('change', e => {
+  const a = e.target.dataset.action;
+  if (a === 'toggle') toggleTask(e.target.dataset.id, e.target.checked);
+  else if (a === 'subtoggle') toggleSub(e.target.dataset.id, e.target.dataset.sid, e.target.checked);
+});
 $('taskList').addEventListener('click', e => {
-  const b = e.target.closest('[data-action]'); if (!b || b.dataset.action === 'toggle') return;
+  const tg = e.target.closest('button[data-tag]');
+  if (tg) { ui.tag = ui.tag === tg.dataset.tag ? '' : tg.dataset.tag; saveUi(); render(); return; }
+  const b = e.target.closest('[data-action]'); if (!b || b.dataset.action === 'toggle' || b.dataset.action === 'subtoggle') return;
+  if (b.dataset.action === 'subs') { const k = String(b.dataset.id); if (expanded.has(k)) expanded.delete(k); else expanded.add(k); render(); return; }
   if (b.dataset.action === 'edit') openEdit(b.dataset.id);
   if (b.dataset.action === 'delete') deleteTask(b.dataset.id);
 });
@@ -905,6 +1018,16 @@ $('editFiles').addEventListener('change', e => { addPending(editPending, e.targe
     renderPending(id, get());
   });
 });
+$('tagChips').addEventListener('click', e => { const b = e.target.closest('button[data-tagf]'); if (!b) return; ui.tag = ui.tag === b.dataset.tagf ? '' : b.dataset.tagf; saveUi(); render(); });
+[['newTagPick', 'newTags'], ['editTagPick', 'editTags']].forEach(([box, inp]) => {
+  $(box).addEventListener('click', e => { const b = e.target.closest('button[data-pick]'); if (!b) return; const el = $(inp); el.value = (el.value.trim() + ' ' + b.dataset.pick).trim(); renderTagPicks(); });
+  $(inp).addEventListener('input', renderTagPicks);
+});
+$('editSubs').addEventListener('input', e => { const i = e.target.dataset.subTxt; if (i !== undefined && editSubsArr[i]) editSubsArr[i].text = e.target.value; });
+$('editSubs').addEventListener('change', e => { const i = e.target.dataset.subChk; if (i !== undefined && editSubsArr[i]) editSubsArr[i].done = e.target.checked; });
+$('editSubs').addEventListener('click', e => { const b = e.target.closest('button[data-sub-del]'); if (!b) return; editSubsArr.splice(+b.dataset.subDel, 1); renderEditSubs(); });
+$('editSubAdd').addEventListener('click', addEditSub);
+$('editSubNew').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); addEditSub(); } });
 $('saveEdit').addEventListener('click', saveEdit);
 $('editTitle').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) saveEdit(); });
 $('closeEdit').addEventListener('click', () => $('editModal').classList.add('hide'));
