@@ -104,6 +104,9 @@ button.tag{border:0;font-family:inherit;cursor:pointer}
 .subhandle{border:0;background:none;color:var(--muted);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:6px 2px;font-size:18px;line-height:1;min-width:26px;min-height:38px;letter-spacing:-2px}
 .subhandle:active{cursor:grabbing}
 .subrow.dragging{background:var(--soft);border-radius:10px;box-shadow:0 4px 14px #0003}
+.intervalrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.intervalrow input{width:96px}
+.intervalrow select{width:auto}
 .addsub{display:flex;gap:8px}
 .addsub input{width:auto;flex:1;min-width:0}
 body.noextra .extra-ui{display:none!important}
@@ -223,15 +226,16 @@ body.noextra .extra-ui{display:none!important}
       <button id="addBtn" class="btn primary">新增</button>
     </div>
     <div id="parsePreview" class="preview hide" aria-live="polite"></div>
-    <p class="hint" id="quickHint">可直接輸入日期時間：今天／明天／下週三／10/20／3點半／每週…；<b>#工作</b> 指定分類、其他 <b>#文字</b> 會變成標籤、<b>!高</b> 指定優先順序。</p>
+    <p class="hint" id="quickHint">可直接輸入日期時間：今天／明天／下週三／10/20／3點半／每週／每29天…；<b>#工作</b> 指定分類、其他 <b>#文字</b> 會變成標籤、<b>!高</b> 指定優先順序。</p>
     <div class="more">
       <button type="button" class="morebtn" id="moreBtn" aria-expanded="false">＋ 更多選項（分類、日期、備註、附件）</button>
       <div id="moreBox" class="hide">
         <div class="details">
           <div class="field"><label for="newCategory">分類</label><select id="newCategory"><option value="工作">工作</option><option value="生活" selected>生活</option><option value="購物">購物</option></select></div>
           <div class="field"><label for="newPriority">優先順序</label><select id="newPriority"><option value="普通" selected>普通</option><option value="高">高</option><option value="低">低</option></select></div>
-          <div class="field"><label for="newRepeat">重複</label><select id="newRepeat"><option value="不重複">不重複</option><option value="每天">每天</option><option value="每週">每週</option><option value="每月">每月</option></select></div>
+          <div class="field"><label for="newRepeat">重複</label><select id="newRepeat"><option value="不重複">不重複</option><option value="每天">每天</option><option value="每週">每週</option><option value="每月">每月</option><option value="custom">自訂間隔…</option></select></div>
         </div>
+        <div class="field hide" id="newRepeatCustom"><label for="newRepeatN">自訂重複間隔</label><div class="intervalrow"><span>每</span><input id="newRepeatN" type="number" inputmode="numeric" min="1" max="365" value="2"><select id="newRepeatUnit" aria-label="間隔單位"><option value="每天">天</option><option value="每週">週</option><option value="每月">個月</option></select><span>重複一次</span></div></div>
         <div class="field"><label for="newDue">到期日期時間</label><input id="newDue" type="datetime-local">
           <div class="quickdates" data-target="newDue"><button type="button" class="chip" data-q="today">今天</button><button type="button" class="chip" data-q="tomorrow">明天</button><button type="button" class="chip" data-q="weekend">本週末</button><button type="button" class="chip" data-q="nextmon">下週一</button><button type="button" class="chip" data-q="clear">清除</button></div>
         </div>
@@ -282,8 +286,9 @@ body.noextra .extra-ui{display:none!important}
   <div class="details">
     <div class="field"><label for="editCategory">分類</label><select id="editCategory"><option>工作</option><option>生活</option><option>購物</option></select></div>
     <div class="field"><label for="editPriority">優先順序</label><select id="editPriority"><option>高</option><option>普通</option><option>低</option></select></div>
-    <div class="field"><label for="editRepeat">重複</label><select id="editRepeat"><option>不重複</option><option>每天</option><option>每週</option><option>每月</option></select></div>
+    <div class="field"><label for="editRepeat">重複</label><select id="editRepeat"><option>不重複</option><option>每天</option><option>每週</option><option>每月</option><option value="custom">自訂間隔…</option></select></div>
   </div>
+  <div class="field hide" id="editRepeatCustom"><label for="editRepeatN">自訂重複間隔</label><div class="intervalrow"><span>每</span><input id="editRepeatN" type="number" inputmode="numeric" min="1" max="365" value="2"><select id="editRepeatUnit" aria-label="間隔單位"><option value="每天">天</option><option value="每週">週</option><option value="每月">個月</option></select><span>重複一次</span></div></div>
   <div class="field"><label for="editDue">到期日期時間</label><input id="editDue" type="datetime-local">
     <div class="quickdates" data-target="editDue"><button type="button" class="chip" data-q="today">今天</button><button type="button" class="chip" data-q="tomorrow">明天</button><button type="button" class="chip" data-q="weekend">本週末</button><button type="button" class="chip" data-q="nextmon">下週一</button><button type="button" class="chip" data-q="clear">清除</button></div>
   </div>
@@ -390,8 +395,15 @@ function parseQuick(input, nowArg) {
   s = s.replace(/[#＃]([^\s#＃!！]+)/g, (m, w) => { if (['工作', '生活', '購物'].includes(w) && !out.category) out.category = w; else out.tags.push(w); return ' '; });
   take(/[!！](高|低|普通|中)/, m => { out.priority = m[1] === '中' ? '普通' : m[1]; });
 
-  let d = null, period = '', h = null, mi = 0, weeklyWd = null;
-  take(/每(?:週|周|星期|禮拜)([一二三四五六日天])?/, m => { out.repeat = '每週'; if (m[1]) weeklyWd = WD[m[1]]; });
+  let d = null, period = '', h = null, mi = 0, weeklyWd = null, monthlyDay = null;
+  take(/每個?月\s*(\d{1,2})\s*[日號号]/, m => { out.repeat = '每月'; monthlyDay = Math.min(Math.max(+m[1], 1), 31); });
+  const CNN = {'兩':2,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+  take(/每\s*(\d{1,3}|[兩二三四五六七八九十])\s*(?:個)?(天|日|週|周|星期|禮拜|月)/, m => {
+    const n = /^\d+$/.test(m[1]) ? +m[1] : CNN[m[1]];
+    out.every = Math.min(Math.max(n, 1), 365);
+    out.repeat = /天|日/.test(m[2]) ? '每天' : /月/.test(m[2]) ? '每月' : '每週';
+  });
+  if (!out.repeat) take(/每(?:週|周|星期|禮拜)([一二三四五六日天])?/, m => { out.repeat = '每週'; if (m[1]) weeklyWd = WD[m[1]]; });
   if (!out.repeat) { if (take(/每(?:天|日)/, () => {})) out.repeat = '每天'; else if (take(/每個?月/, () => {})) out.repeat = '每月'; }
 
   const nextWd = (wd, next) => {
@@ -419,6 +431,11 @@ function parseQuick(input, nowArg) {
   ];
   for (const [re, fn] of tries) { const m = s.match(re); if (m) { s = s.replace(m[0], ' '); d = fn(m); break; } }
   if (!d && weeklyWd !== null) d = nextWd(weeklyWd, false);
+  if (!d && monthlyDay !== null) {
+    const clampDay = (y, mo, dd) => new Date(y, mo, Math.min(dd, new Date(y, mo + 1, 0).getDate()));
+    d = clampDay(now.getFullYear(), now.getMonth(), monthlyDay);
+    if (d < today0) d = clampDay(now.getFullYear(), now.getMonth() + 1, monthlyDay);
+  }
 
   take(/(凌晨|清晨|早上|早晨|上午|中午|下午|傍晚|晚上|晚間|夜晚)/, m => { period = m[1]; });
   if (!take(/(\d{1,2})\s*[:：]\s*(\d{2})/, m => { h = +m[1]; mi = +m[2]; })) {
@@ -459,7 +476,7 @@ function updatePreview() {
   if (p.category) chips.push(`🏷 ${p.category}`);
   (p.tags || []).forEach(g => chips.push(`# ${g}`));
   if (p.priority) chips.push(`⚑ ${p.priority}優先`);
-  if (p.repeat) chips.push(`↻ ${p.repeat}`);
+  if (p.repeat) chips.push(`↻ ${repeatLabel({repeat_type: p.repeat, repeat_every: p.every || 1})}`);
   box.innerHTML = chips.map(c => `<span class="tag parsed">${escapeHtml(c)}</span>`).join('');
   box.classList.toggle('hide', !chips.length);
 }
@@ -534,7 +551,7 @@ async function loadTasks(silent) {
   const {data, error} = await db.from('tasks').select('*').order('created_at', {ascending: false});
   if (error) { setStatus('同步失敗', 'bad'); if (!silent) toast('讀取雲端失敗：' + error.message, 'error'); return; }
   tasks = data || []; lastLoad = Date.now();
-  if (tasks.length) setExtra('tags' in tasks[0] && 'subtasks' in tasks[0]);
+  if (tasks.length) { setExtra('tags' in tasks[0] && 'subtasks' in tasks[0]); setRepeat('repeat_every' in tasks[0]); }
   setStatus('雲端已同步', 'ok'); render(); checkReminders();
 }
 function subscribe() {
@@ -606,7 +623,7 @@ function taskHtml(t) {
   return `<article class="task ${pc} ${t.completed ? 'done' : ''}" data-id="${id}">
 <input class="check" type="checkbox" aria-label="標記完成：${escapeHtml(t.title)}" data-action="toggle" data-id="${id}" ${t.completed ? 'checked' : ''}>
 <div class="taskmain"><div class="tasktitle" data-action="edit" data-id="${id}">${escapeHtml(t.title)}</div>
-<div class="meta"><span class="tag">${escapeHtml(t.category || '生活')}</span>${t.priority === '高' ? '<span class="tag high">高優先</span>' : t.priority === '低' ? '<span class="tag">低優先</span>' : ''}${t.due_at ? `<span class="tag ${overdue ? 'late' : 'due'}">${overdue ? '已逾期 · ' : ''}${escapeHtml(niceDate(t.due_at))}</span>` : ''}${t.repeat_type && t.repeat_type !== '不重複' ? `<span class="tag">↻ ${escapeHtml(t.repeat_type)}</span>` : ''}${subs.length ? `<button type="button" class="tag prog ${doneN === subs.length ? 'full' : ''}" data-action="subs" data-id="${id}" aria-expanded="${open}" aria-label="子任務 ${doneN}/${subs.length}，點擊${open ? '收合' : '展開'}">☑ ${doneN}/${subs.length} ${open ? '▴' : '▾'}</button>` : ''}${tags.map(g => `<button type="button" class="tag hash" data-tag="${escapeHtml(g)}" aria-label="篩選標籤 ${escapeHtml(g)}">#${escapeHtml(g)}</button>`).join('')}</div>
+<div class="meta"><span class="tag">${escapeHtml(t.category || '生活')}</span>${t.priority === '高' ? '<span class="tag high">高優先</span>' : t.priority === '低' ? '<span class="tag">低優先</span>' : ''}${t.due_at ? `<span class="tag ${overdue ? 'late' : 'due'}">${overdue ? '已逾期 · ' : ''}${escapeHtml(niceDate(t.due_at))}</span>` : ''}${t.repeat_type && t.repeat_type !== '不重複' ? `<span class="tag">↻ ${escapeHtml(repeatLabel(t))}</span>` : ''}${subs.length ? `<button type="button" class="tag prog ${doneN === subs.length ? 'full' : ''}" data-action="subs" data-id="${id}" aria-expanded="${open}" aria-label="子任務 ${doneN}/${subs.length}，點擊${open ? '收合' : '展開'}">☑ ${doneN}/${subs.length} ${open ? '▴' : '▾'}</button>` : ''}${tags.map(g => `<button type="button" class="tag hash" data-tag="${escapeHtml(g)}" aria-label="篩選標籤 ${escapeHtml(g)}">#${escapeHtml(g)}</button>`).join('')}</div>
 ${subs.length && open ? `<ul class="subs">${subs.map(x => `<li class="${x.done ? 'done' : ''}"><label><input type="checkbox" data-action="subtoggle" data-id="${id}" data-sid="${escapeHtml(x.id)}" ${x.done ? 'checked' : ''}><span>${escapeHtml(x.text)}</span></label></li>`).join('')}</ul>` : ''}
 ${t.notes ? `<p class="muted notes">${escapeHtml(t.notes)}</p>` : ''}
 ${atts.length ? `<div class="meta">${atts.map(a => `<a class="tag" href="#" data-attachment-path="${escapeHtml(a.path || '')}" data-legacy-url="${escapeHtml(!a.path ? (a.url || '') : '')}">📎 ${escapeHtml(a.name || '附件')}</a>`).join('')}</div>` : ''}</div>
@@ -712,23 +729,37 @@ function removeFiles(paths) { paths = (paths || []).filter(Boolean); if (paths.l
 /* ---------- 新增 / 修改 / 刪除 ---------- */
 /* ---------- 標籤 / 子任務 / 欄位相容 ---------- */
 const EXTRA_KEYS = ['subtasks', 'tags'];
-const noExtra = o => { const r = {...o}; EXTRA_KEYS.forEach(k => delete r[k]); return r; };
+let repeatOk = true, repeatWarned = false;
+const strip = o => { const r = {...o}; if (!extraOk) EXTRA_KEYS.forEach(k => delete r[k]); if (!repeatOk) delete r.repeat_every; return r; };
 function setExtra(ok) {
   extraOk = ok; document.body.classList.toggle('noextra', !ok);
   if (!ok && !extraWarned) { extraWarned = true; toast('尚未新增「子任務／標籤」欄位，請先到 Supabase 執行設定教學中的 SQL', {kind: 'error', ttl: 9000}); }
 }
-async function dbInsert(payload) {
-  const run = p => db.from('tasks').insert(p).select().single();
-  let r = await run(extraOk ? payload : noExtra(payload));
-  if (r.error && extraOk && /subtasks|tags/.test(r.error.message || '')) { setExtra(false); r = await run(noExtra(payload)); }
+function setRepeat(ok) {
+  repeatOk = ok;
+  if (!ok && !repeatWarned) { repeatWarned = true; toast('尚未新增「自訂重複間隔」欄位，請先到 Supabase 執行設定教學中的 SQL，在那之前自訂間隔會被當成每 1 次', {kind: 'error', ttl: 10000}); }
+}
+async function withFallback(run, payload) {
+  let r = await run(strip(payload));
+  if (r.error) {
+    const m = r.error.message || ''; let changed = false;
+    if (extraOk && /subtasks|tags/.test(m)) { setExtra(false); changed = true; }
+    if (repeatOk && /repeat_every/.test(m)) { setRepeat(false); changed = true; }
+    if (changed) r = await run(strip(payload));
+  }
   return r;
 }
-async function dbUpdate(id, patch) {
-  const run = p => db.from('tasks').update(p).eq('id', id).select().single();
-  let r = await run(extraOk ? patch : noExtra(patch));
-  if (r.error && extraOk && /subtasks|tags/.test(r.error.message || '')) { setExtra(false); r = await run(noExtra(patch)); }
-  return r;
+const dbInsert = payload => withFallback(p => db.from('tasks').insert(p).select().single(), payload);
+const dbUpdate = (id, patch) => withFallback(p => db.from('tasks').update(p).eq('id', id).select().single(), patch);
+const REPEAT_UNIT = {'每天': '天', '每週': '週', '每月': '個月'};
+function repeatLabel(t) { const n = parseInt(t.repeat_every, 10) || 1; return n > 1 ? `每 ${n} ${REPEAT_UNIT[t.repeat_type] || ''}` : t.repeat_type; }
+function readRepeat(selId, numId, unitId) {
+  const v = $(selId).value;
+  if (v !== 'custom') return {type: v, every: 1};
+  let n = parseInt($(numId).value, 10); if (!Number.isFinite(n)) n = 1;
+  return {type: $(unitId).value, every: Math.min(Math.max(n, 1), 365)};
 }
+function syncRepeatUI(prefix) { $(prefix + 'RepeatCustom').classList.toggle('hide', $(prefix + 'Repeat').value !== 'custom'); }
 const rid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
 const normTag = x => String(x).replace(/^[#＃]+/, '').trim().slice(0, 20);
 function normTags(arr) {
@@ -777,7 +808,7 @@ async function toggleSub(id, sid, checked) {
 }
 
 function resetComposer() {
-  $('newTitle').value = ''; $('newDue').value = ''; $('newCategory').value = '生活'; $('newPriority').value = '普通'; $('newRepeat').value = '不重複'; $('newNotes').value = ''; $('newTags').value = ''; $('newSubs').value = ''; $('newFiles').value = ''; newPending = []; renderPending('newFileList', newPending);
+  $('newTitle').value = ''; $('newDue').value = ''; $('newCategory').value = '生活'; $('newPriority').value = '普通'; $('newRepeat').value = '不重複'; $('newRepeatN').value = '2'; $('newRepeatUnit').value = '每天'; syncRepeatUI('new'); $('newNotes').value = ''; $('newTags').value = ''; $('newSubs').value = ''; $('newFiles').value = ''; newPending = []; renderPending('newFileList', newPending);
   updatePreview();
   if (window.matchMedia('(pointer:fine)').matches) $('newTitle').focus();
 }
@@ -788,8 +819,9 @@ async function addTask() {
   const p = parseQuick(raw);
   let due = p.due || ($('newDue').value ? new Date($('newDue').value) : null);
   if (!due && selectedDate) { const [y, m, d] = selectedDate.split('-').map(Number); due = new Date(y, m - 1, d, 18, 0); }
+  const rp = p.repeat ? {type: p.repeat, every: p.every || 1} : readRepeat('newRepeat', 'newRepeatN', 'newRepeatUnit');
   const payload = {user_id: user.id, title: p.title, category: p.category || $('newCategory').value, priority: p.priority || $('newPriority').value,
-    due_at: due && !Number.isNaN(due.getTime()) ? due.toISOString() : null, repeat_type: p.repeat || $('newRepeat').value, completed: false, notes: $('newNotes').value.trim(), attachments: [],
+    due_at: due && !Number.isNaN(due.getTime()) ? due.toISOString() : null, repeat_type: rp.type, repeat_every: rp.every, completed: false, notes: $('newNotes').value.trim(), attachments: [],
     tags: normTags((p.tags || []).concat(parseTagsInput($('newTags').value))), subtasks: parseSubsText($('newSubs').value)};
   busy = true; $('addBtn').disabled = true;
   let uploaded = [];
@@ -813,12 +845,12 @@ async function setCompleted(t, checked) {
   return true;
 }
 function nextDue(t) {
-  const base = new Date(t.due_at), now = new Date();
+  const base = new Date(t.due_at), now = new Date(), step = Math.max(1, parseInt(t.repeat_every, 10) || 1);
   for (let k = 1; k <= 400; k++) {
-    let n = new Date(base);
-    if (t.repeat_type === '每天') n.setDate(base.getDate() + k);
-    else if (t.repeat_type === '每週') n.setDate(base.getDate() + 7 * k);
-    else { n.setDate(1); n.setMonth(base.getMonth() + k); n.setDate(Math.min(base.getDate(), new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate())); }
+    const j = k * step; const n = new Date(base);
+    if (t.repeat_type === '每天') n.setDate(base.getDate() + j);
+    else if (t.repeat_type === '每週') n.setDate(base.getDate() + 7 * j);
+    else { n.setDate(1); n.setMonth(base.getMonth() + j); n.setDate(Math.min(base.getDate(), new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate())); }
     if (n > now) return n;
   }
   return null;
@@ -829,7 +861,7 @@ async function spawnNext(t) {
   const iso = due ? due.toISOString() : null;
   if (tasks.some(x => !x.completed && x.title === t.title && x.repeat_type === t.repeat_type && (x.due_at || null) === iso)) return null;
   lastWrite = Date.now();
-  const {data, error} = await dbInsert({user_id: user.id, title: t.title, category: t.category, priority: t.priority, due_at: iso, repeat_type: t.repeat_type, completed: false, notes: t.notes || '', attachments: [], tags: t.tags || [], subtasks: (t.subtasks || []).map(x => ({...x, done: false}))});
+  const {data, error} = await dbInsert({user_id: user.id, title: t.title, category: t.category, priority: t.priority, due_at: iso, repeat_type: t.repeat_type, repeat_every: t.repeat_every || 1, completed: false, notes: t.notes || '', attachments: [], tags: t.tags || [], subtasks: (t.subtasks || []).map(x => ({...x, done: false}))});
   if (error) { toast('原事項已完成，但建立下一次重複事項失敗：' + error.message, 'error'); return null; }
   tasks.unshift(data); render(); return data;
 }
@@ -864,7 +896,10 @@ function renderEditAttachments() {
 function openEdit(id) {
   const t = byId(id); if (!t) return;
   $('editId').value = t.id; $('editTitle').value = t.title; $('editCategory').value = t.category || '生活'; $('editPriority').value = t.priority || '普通';
-  $('editDue').value = dateToInput(t.due_at); $('editRepeat').value = t.repeat_type || '不重複'; $('editNotes').value = t.notes || ''; $('editFiles').value = ''; editPending = []; renderPending('editFileList', editPending);
+  $('editDue').value = dateToInput(t.due_at); const ev = parseInt(t.repeat_every, 10) || 1;
+  if (t.repeat_type && t.repeat_type !== '不重複' && ev > 1) { $('editRepeat').value = 'custom'; $('editRepeatN').value = String(ev); $('editRepeatUnit').value = t.repeat_type; }
+  else { $('editRepeat').value = t.repeat_type || '不重複'; $('editRepeatN').value = '2'; $('editRepeatUnit').value = '每天'; }
+  syncRepeatUI('edit'); $('editNotes').value = t.notes || ''; $('editFiles').value = ''; editPending = []; renderPending('editFileList', editPending);
   editAtt = (t.attachments || []).slice(); editRemoved = []; renderEditAttachments();
   $('editTags').value = (t.tags || []).join(' '); editSubsArr = cleanSubs(t.subtasks); $('editSubNew').value = ''; renderEditSubs(); renderTagPicks();
   msg('editMsg', ''); $('editModal').classList.remove('hide'); $('editTitle').focus();
@@ -876,7 +911,8 @@ async function saveEdit() {
   let uploaded = [];
   try {
     uploaded = await uploadAttachments(editPending, 'editMsg');
-    const patch = {title, category: $('editCategory').value, priority: $('editPriority').value, due_at: inputToIso($('editDue').value), repeat_type: $('editRepeat').value, notes: $('editNotes').value.trim(), attachments: editAtt.concat(uploaded), tags: normTags(parseTagsInput($('editTags').value)), subtasks: cleanSubs(editSubsArr), updated_at: new Date().toISOString()};
+    const er = readRepeat('editRepeat', 'editRepeatN', 'editRepeatUnit');
+    const patch = {title, category: $('editCategory').value, priority: $('editPriority').value, due_at: inputToIso($('editDue').value), repeat_type: er.type, repeat_every: er.every, notes: $('editNotes').value.trim(), attachments: editAtt.concat(uploaded), tags: normTags(parseTagsInput($('editTags').value)), subtasks: cleanSubs(editSubsArr), updated_at: new Date().toISOString()};
     lastWrite = Date.now();
     const {data, error} = await dbUpdate(id, patch);
     if (error) throw error;
@@ -913,12 +949,12 @@ async function importData(file) {
     if (!Array.isArray(data)) throw Error('檔案格式不正確');
     const rows = data.filter(t => t && typeof t.title === 'string' && t.title.trim()).map(t => ({user_id: user.id, title: t.title, category: CATS.includes(t.category) ? t.category : '生活',
       priority: ['高', '普通', '低'].includes(t.priority) ? t.priority : '普通', due_at: t.due_at || null, completed: !!t.completed,
-      repeat_type: ['每天', '每週', '每月', '不重複'].includes(t.repeat_type) ? t.repeat_type : '不重複', notes: typeof t.notes === 'string' ? t.notes : '', attachments: Array.isArray(t.attachments) ? t.attachments : [],
+      repeat_type: ['每天', '每週', '每月', '不重複'].includes(t.repeat_type) ? t.repeat_type : '不重複', repeat_every: Number.isInteger(t.repeat_every) && t.repeat_every >= 1 && t.repeat_every <= 365 ? t.repeat_every : 1, notes: typeof t.notes === 'string' ? t.notes : '', attachments: Array.isArray(t.attachments) ? t.attachments : [],
       tags: normTags(Array.isArray(t.tags) ? t.tags : []), subtasks: cleanSubs(t.subtasks)}));
     if (!rows.length) throw Error('沒有可匯入的待辦事項');
     if (!confirm(`將匯入 ${rows.length} 項待辦，是否繼續？`)) return;
     lastWrite = Date.now();
-    const {error} = await db.from('tasks').insert(extraOk ? rows : rows.map(noExtra));
+    const {error} = await db.from('tasks').insert(rows.map(strip));
     if (error) throw error;
     toast(`已匯入 ${rows.length} 項`, 'success'); await loadTasks(true);
   } catch (e) { toast('匯入失敗：' + (e.message || '檔案讀取錯誤'), 'error'); }
@@ -1107,6 +1143,8 @@ $('editSubs').addEventListener('keydown', e => {
   if (e.key === 'ArrowDown') { e.preventDefault(); moveSub(i, i + 1); }
 });
 $('saveRemind').addEventListener('click', saveRemind);
+$('newRepeat').addEventListener('change', () => syncRepeatUI('new'));
+$('editRepeat').addEventListener('change', () => syncRepeatUI('edit'));
 $('closeSettings').addEventListener('click', () => $('settingsModal').classList.add('hide'));
 $('settingsModal').addEventListener('click', e => { if (e.target === $('settingsModal')) $('settingsModal').classList.add('hide'); });
 $('editSubNew').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); addEditSub(); } });
