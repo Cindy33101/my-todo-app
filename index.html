@@ -104,6 +104,24 @@ button.tag{border:0;font-family:inherit;cursor:pointer}
 .subhandle{border:0;background:none;color:var(--muted);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:6px 2px;font-size:18px;line-height:1;min-width:26px;min-height:38px;letter-spacing:-2px}
 .subhandle:active{cursor:grabbing}
 .subrow.dragging{background:var(--soft);border-radius:10px;box-shadow:0 4px 14px #0003}
+.pagetabs{display:flex;gap:6px;background:var(--soft2);border-radius:14px;padding:4px;margin-bottom:14px}
+.pagetabs button{flex:1;border:0;background:none;border-radius:11px;padding:10px;font-weight:650;min-height:42px}
+.pagetabs button.active{background:var(--card);box-shadow:var(--shadow)}
+.note{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow)}
+.note.pinned{border-color:var(--accent)}
+.notehead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.noteactions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.noteactions .iconbtn{min-width:36px;min-height:36px}
+.notebody{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;font-size:15.5px}
+.notebody a{color:var(--accent);text-decoration:underline}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
+.thumb{display:block;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--soft2)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.composer textarea.notetext{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--card);outline:none;resize:vertical;line-height:1.55}
+.composer textarea.notetext:focus{border-color:var(--accent);box-shadow:0 0 0 3px #A88D6C2a}
+.noterow{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap}
+.filebtn{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--line);border-radius:11px;padding:9px 12px;font-size:14px;cursor:pointer;background:var(--card);min-height:42px}
+.filebtn input{display:none}
 .intervalrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .intervalrow input{width:96px}
 .intervalrow select{width:auto}
@@ -202,8 +220,9 @@ body.noextra .extra-ui{display:none!important}
     <button data-menu="refresh" role="menuitem">↻ 重新同步</button>
     <button data-menu="notify" id="notifyItem" role="menuitem">🔔 開啟背景推播</button>
     <button data-menu="settings" id="settingsItem" role="menuitem">⏰ 提醒時間</button>
-    <button data-menu="export" role="menuitem">⤓ 匯出備份</button>
-    <button data-menu="import" role="menuitem">⤒ 匯入備份</button>
+    <button data-menu="export" role="menuitem">⤓ 匯出待辦備份</button>
+    <button data-menu="exportnotes" role="menuitem">⤓ 匯出留言板備份</button>
+    <button data-menu="import" role="menuitem">⤒ 匯入待辦備份</button>
     <button data-menu="logout" class="danger-text" role="menuitem">登出</button>
   </div>
 </header>
@@ -220,6 +239,11 @@ body.noextra .extra-ui{display:none!important}
 </section>
 
 <section id="appPanel" class="hide">
+  <nav class="pagetabs" id="pageTabs" aria-label="頁面">
+    <button type="button" data-page="todo">📋 待辦清單</button>
+    <button type="button" data-page="board">📝 留言板</button>
+  </nav>
+  <div id="todoPage">
   <section class="panel composer" aria-label="新增待辦">
     <div class="quick">
       <input id="newTitle" maxlength="300" placeholder="新增待辦，例如：明天下午3點 開會 #工作 !高" aria-label="待辦事項" enterkeyhint="done" autocomplete="off">
@@ -275,7 +299,25 @@ body.noextra .extra-ui{display:none!important}
   <div class="sectionhead"><h2 id="listTitle">待辦事項</h2><span id="resultCount">0 項</span></div>
   <div id="taskList" class="tasklist"></div>
   <input id="importFile" type="file" accept="application/json,.json" class="hide">
-  <p class="foot">資料儲存在 Supabase 雲端，手機與電腦用同一個帳號即可同步。提醒時間可在右上角 ⋯ → 提醒時間 設定（預設到期前 10 分鐘）。要在沒開頁面時也收到通知，請按右上角 ⋯ → 開啟背景推播（iPhone 需先加入主畫面）。<br>標籤：輸入 <b>#標籤名</b>；子任務：在「更多選項」一行一項，或編輯待辦時加入，點待辦上的 ☑ 可展開勾選；編輯時可拖曳 ⋮⋮ 調整子任務順序。<br>快捷鍵：<b>N</b> 新增　<b>/</b> 搜尋　<b>Esc</b> 關閉視窗</p>
+  <p class="foot">資料儲存在 Supabase 雲端，手機與電腦用同一個帳號即可同步。提醒時間可在右上角 ⋯ → 提醒時間 設定（預設到期前 10 分鐘）。要在沒開頁面時也收到通知，請按右上角 ⋯ → 開啟背景推播（iPhone 需先加入主畫面）。<br>標籤：輸入 <b>#標籤名</b>；子任務：在「更多選項」一行一項，或編輯待辦時加入，點待辦上的 ☑ 可展開勾選；編輯時可拖曳 ⋮⋮ 調整子任務順序。<br>快捷鍵：<b>N</b> 新增（待辦／留言）　<b>/</b> 搜尋　<b>Esc</b> 關閉視窗</p>
+  </div>
+
+  <div id="boardPage" class="hide">
+    <section class="panel composer" id="noteComposer" aria-label="新增留言">
+      <textarea id="noteText" class="notetext" rows="3" maxlength="5000" placeholder="寫下備忘或靈感… 可用 #標籤、貼上網址，也能直接貼上圖片（Ctrl/⌘ + Enter 發佈）" aria-label="留言內容"></textarea>
+      <div id="noteFileList"></div>
+      <div class="noterow">
+        <label class="filebtn">📎 加入圖片／檔案<input id="noteFiles" type="file" multiple></label>
+        <button id="notePostBtn" class="btn primary" type="button">發佈</button>
+      </div>
+      <div id="noteMsg" class="notice" role="status"></div>
+    </section>
+    <div class="filters"><input class="grow" id="noteSearch" type="search" placeholder="搜尋留言內容或檔名…" aria-label="搜尋留言"></div>
+    <div class="tagrow" id="boardTags" aria-label="標籤篩選"></div>
+    <div class="sectionhead"><h2>留言板</h2><span id="boardCount"></span></div>
+    <div id="boardList" class="tasklist"></div>
+    <p class="foot">這裡只有你自己看得到。內容用 <b>#標籤</b> 分類，網址會自動變成連結；可以把留言「轉成待辦」。單一檔案上限 10 MB，圖片會自動壓縮。</p>
+  </div>
 </section>
 </main>
 
@@ -298,6 +340,14 @@ body.noextra .extra-ui{display:none!important}
   <div class="field"><label for="editFiles">新增附件</label><input id="editFiles" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.ppt,.pptx"><div id="editFileList"></div><div id="existingAttachments"></div></div>
   <button id="saveEdit" class="btn primary wide">儲存修改</button>
   <div id="editMsg" class="notice" role="status"></div>
+</div></div>
+
+<div id="noteModal" class="modal hide" role="dialog" aria-modal="true" aria-labelledby="noteModalHead"><div class="modalbox">
+  <div class="modalhead"><h3 id="noteModalHead">編輯留言</h3><button class="iconbtn" id="closeNoteModal" aria-label="關閉">✕</button></div>
+  <div class="field"><label for="noteEditText">內容</label><textarea id="noteEditText" rows="6" maxlength="5000"></textarea></div>
+  <div class="field"><label for="noteEditFiles">新增附件</label><input id="noteEditFiles" type="file" multiple><div id="noteEditFileList"></div><div id="noteEditExisting"></div></div>
+  <button id="saveNote" class="btn primary wide">儲存修改</button>
+  <div id="noteEditMsg" class="notice" role="status"></div>
 </div></div>
 
 <div id="settingsModal" class="modal hide" role="dialog" aria-modal="true" aria-labelledby="settingsHead"><div class="modalbox">
@@ -347,7 +397,9 @@ let selectedDate = '';
 let editAtt = [], editRemoved = [], newPending = [], editPending = [];
 let editSubsArr = [], extraOk = true, extraWarned = false;
 const expanded = new Set();
-const ui = Object.assign({view:'open', cat:'全部', tag:'', sort:'smart', calOpen: window.innerWidth > 520}, (() => { try { return JSON.parse(localStorage.getItem('todo-ui') || '{}'); } catch (e) { return {}; } })());
+let notes = [], notesOk = true, notesLoaded = false, noteTag = '', noteBusy = false, noteTimer = null, editNoteId = null, editNoteAtt = [], editNoteRemoved = [];
+const urlCache = new Map();
+const ui = Object.assign({page:'todo', view:'open', cat:'全部', tag:'', sort:'smart', calOpen: window.innerWidth > 520}, (() => { try { return JSON.parse(localStorage.getItem('todo-ui') || '{}'); } catch (e) { return {}; } })());
 const saveUi = () => { try { localStorage.setItem('todo-ui', JSON.stringify(ui)); } catch (e) {} };
 
 /* ---------- 工具 ---------- */
@@ -481,6 +533,166 @@ function updatePreview() {
   box.classList.toggle('hide', !chips.length);
 }
 
+/* ---------- 留言板 ---------- */
+const noteErr = e => { const m = (e && e.message) || String(e); return /notes/.test(m) && /table|relation|schema cache/i.test(m) ? '尚未建立 notes 資料表，請先到 Supabase 執行設定教學中的 SQL' : m; };
+const byNote = id => notes.find(n => sameId(n.id, id));
+const isImg = a => /^image\//.test(a.type || '') || /\.(png|jpe?g|gif|webp|bmp|heic|avif)$/i.test(a.name || '');
+const TAG_RE = /(^|\s)#([^\s#<>&"'`]{1,30})/g;
+function extractTags(text) { const out = []; String(text || '').replace(TAG_RE, (m, p, g) => { if (!out.includes(g)) out.push(g); return m; }); return out; }
+function linkify(url) {
+  let u = url, tail = '';
+  const m = u.match(/(?:[.,;:!?)）」』]|&gt;|&quot;|&#39;)+$/);
+  if (m) { tail = m[0]; u = u.slice(0, -tail.length); }
+  return `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>${tail}`;
+}
+function richText(raw) {
+  return escapeHtml(raw).split(/(https?:\/\/[^\s<\u3000-\u303f\uff00-\uffef\u4e00-\u9fff]+)/g).map((p, i) => i % 2 ? linkify(p) : p.replace(TAG_RE, (m, pre, g) => `${pre}<button type="button" class="tag hash" data-ntag="${g}">#${g}</button>`)).join('');
+}
+function pendingList(inputId, listId) {
+  const st = {arr: []};
+  const render = () => {
+    $(listId).innerHTML = st.arr.map((f, i) => `<div class="attrow"><span>📎 ${escapeHtml(f.name)} <small class="muted">（${fmtSize(f.size)}，待上傳）</small></span><button type="button" class="iconbtn" data-rm="${i}" aria-label="移除 ${escapeHtml(f.name)}">✕</button></div>`).join('')
+      + (st.arr.length > 1 ? '<button type="button" class="linkbtn" data-clear="1">全部移除</button>' : '');
+  };
+  $(inputId).addEventListener('change', e => { addPending(st.arr, e.target.files); e.target.value = ''; render(); });
+  $(listId).addEventListener('click', e => {
+    const rm = e.target.closest('button[data-rm]'), all = e.target.closest('button[data-clear]');
+    if (rm) st.arr.splice(+rm.dataset.rm, 1); else if (all) st.arr = []; else return;
+    render();
+  });
+  return {get files() { return st.arr; }, add(files) { addPending(st.arr, files); render(); }, clear() { st.arr = []; $(inputId).value = ''; render(); }};
+}
+async function signedUrls(paths) {
+  const need = [...new Set(paths)].filter(p => { const c = urlCache.get(p); return !c || c.exp < Date.now() + 60000; });
+  if (!need.length) return;
+  const {data, error} = await db.storage.from(BUCKET).createSignedUrls(need, 3600);
+  if (!error && data) data.forEach(d => { if (d.signedUrl && d.path) urlCache.set(d.path, {url: d.signedUrl, exp: Date.now() + 3600e3}); });
+}
+async function hydrateImages() {
+  const imgs = [...document.querySelectorAll('#boardList img[data-path]')].filter(i => !i.getAttribute('src'));
+  if (!imgs.length) return;
+  await signedUrls(imgs.map(i => i.dataset.path));
+  imgs.forEach(i => { const c = urlCache.get(i.dataset.path); if (c && !i.getAttribute('src')) i.src = c.url; });
+}
+function noteHtml(n) {
+  const atts = Array.isArray(n.attachments) ? n.attachments : [], imgs = atts.filter(isImg), files = atts.filter(a => !isImg(a));
+  const id = escapeHtml(n.id), edited = n.updated_at && n.created_at && new Date(n.updated_at) - new Date(n.created_at) > 2000;
+  return `<article class="note ${n.pinned ? 'pinned' : ''}" data-id="${id}">
+<div class="notehead"><span class="muted">${n.pinned ? '📌 ' : ''}${escapeHtml(niceDate(n.created_at))}${edited ? ' · 已編輯' : ''}</span>
+<div class="noteactions"><button class="iconbtn" data-naction="pin" data-id="${id}" aria-label="${n.pinned ? '取消置頂' : '置頂'}" title="${n.pinned ? '取消置頂' : '置頂'}">${n.pinned ? '📌' : '📍'}</button><button class="iconbtn" data-naction="totask" data-id="${id}" aria-label="轉成待辦" title="轉成待辦">☑</button><button class="iconbtn" data-naction="edit" data-id="${id}" aria-label="編輯">✎</button><button class="iconbtn" data-naction="delete" data-id="${id}" aria-label="刪除">⌫</button></div></div>
+${n.content ? `<div class="notebody">${richText(n.content)}</div>` : ''}
+${imgs.length ? `<div class="thumbs">${imgs.map(a => { const c = urlCache.get(a.path); return `<a href="#" class="thumb" data-attachment-path="${escapeHtml(a.path || '')}" data-legacy-url="" aria-label="開啟圖片 ${escapeHtml(a.name || '')}"><img alt="${escapeHtml(a.name || '圖片')}" loading="lazy" data-path="${escapeHtml(a.path || '')}"${c ? ` src="${escapeHtml(c.url)}"` : ''}></a>`; }).join('')}</div>` : ''}
+${files.length ? `<div class="meta" style="margin-top:10px">${files.map(a => `<a class="tag" href="#" data-attachment-path="${escapeHtml(a.path || '')}" data-legacy-url="">📎 ${escapeHtml(a.name || '檔案')}${a.size ? ` <small>${fmtSize(a.size)}</small>` : ''}</a>`).join('')}</div>` : ''}
+</article>`;
+}
+function renderBoard() {
+  if (!notesOk) {
+    $('boardList').innerHTML = '<div class="empty">留言板尚未啟用。<br>請先到 Supabase 的 SQL Editor 執行設定教學中的 SQL，再重新整理頁面。</div>';
+    $('boardTags').innerHTML = ''; $('boardCount').textContent = ''; return;
+  }
+  const q = $('noteSearch').value.trim().toLowerCase(), cnt = new Map();
+  notes.forEach(n => extractTags(n.content).forEach(g => cnt.set(g, (cnt.get(g) || 0) + 1)));
+  if (noteTag && !cnt.has(noteTag)) noteTag = '';
+  $('boardTags').innerHTML = cnt.size ? '<span class="lbl">標籤</span>' + [...cnt].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-Hant')).map(([g, c]) => `<button type="button" class="chip ${noteTag === g ? 'active' : ''}" data-ntagf="${escapeHtml(g)}" aria-pressed="${noteTag === g}">#${escapeHtml(g)} <small>${c}</small></button>`).join('') : '';
+  const list = notes.filter(n => (!q || ((n.content || '') + ' ' + (n.attachments || []).map(a => a.name).join(' ')).toLowerCase().includes(q)) && (!noteTag || extractTags(n.content).includes(noteTag)))
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.created_at || '').localeCompare(a.created_at || ''));
+  $('boardCount').textContent = `${list.length} 則`;
+  $('boardList').innerHTML = list.length ? list.map(noteHtml).join('') : `<div class="empty">${q || noteTag ? '沒有符合條件的留言。' : '還沒有留言。<br>在上方寫下第一則備忘或靈感吧！'}</div>`;
+  hydrateImages();
+}
+async function loadNotes(silent) {
+  if (!user) return;
+  const {data, error} = await db.from('notes').select('*').order('created_at', {ascending: false}).limit(1000);
+  if (error) {
+    if (/notes/.test(error.message || '') && /table|relation|schema cache/i.test(error.message || '')) { notesOk = false; renderBoard(); }
+    else if (!silent) toast('讀取留言板失敗：' + error.message, 'error');
+    return;
+  }
+  notesOk = true; notesLoaded = true; notes = data || []; renderBoard();
+}
+function setPage(p) {
+  ui.page = p === 'board' ? 'board' : 'todo'; saveUi();
+  $('todoPage').classList.toggle('hide', ui.page !== 'todo'); $('boardPage').classList.toggle('hide', ui.page !== 'board');
+  document.querySelectorAll('#pageTabs button').forEach(b => { const on = b.dataset.page === ui.page; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
+  if (ui.page === 'board') { if (!notesLoaded) loadNotes(); else renderBoard(); }
+}
+async function postNote() {
+  if (noteBusy) return;
+  const content = $('noteText').value.trim();
+  if (!content && !noteNew.files.length) { toast('請輸入內容或選擇附件', 'error'); $('noteText').focus(); return; }
+  noteBusy = true; $('notePostBtn').disabled = true;
+  let up = [];
+  try {
+    up = await uploadAttachments(noteNew.files, 'noteMsg');
+    lastWrite = Date.now();
+    const {data, error} = await db.from('notes').insert({user_id: user.id, content, attachments: up}).select().single();
+    if (error) throw error;
+    notes.unshift(data); notesOk = true; notesLoaded = true;
+    $('noteText').value = ''; noteNew.clear(); renderBoard(); toast('已發佈', 'success');
+  } catch (e) { removeFiles(up.map(a => a.path)); toast('發佈失敗：' + noteErr(e), 'error'); }
+  finally { noteBusy = false; $('notePostBtn').disabled = false; }
+}
+async function togglePin(id) {
+  const n = byNote(id); if (!n) return;
+  const prev = !!n.pinned; n.pinned = !prev; renderBoard(); lastWrite = Date.now();
+  const {error} = await db.from('notes').update({pinned: n.pinned}).eq('id', n.id);
+  if (error) { n.pinned = prev; renderBoard(); toast('更新失敗：' + noteErr(error), 'error'); }
+}
+async function deleteNote(id) {
+  const idx = notes.findIndex(x => sameId(x.id, id)); if (idx < 0) return;
+  const n = notes[idx]; notes.splice(idx, 1); renderBoard(); lastWrite = Date.now();
+  const {error} = await db.from('notes').delete().eq('id', n.id);
+  if (error) { notes.splice(idx, 0, n); renderBoard(); toast('刪除失敗：' + noteErr(error), 'error'); return; }
+  const timer = setTimeout(() => removeFiles((n.attachments || []).map(a => a.path)), 7500);
+  toast('已刪除這則留言', {label: '復原', fn: async () => {
+    clearTimeout(timer); lastWrite = Date.now();
+    const {data, error: e2} = await db.from('notes').insert(n).select().single();
+    if (e2) { toast('復原失敗：' + noteErr(e2), 'error'); return; }
+    notes.unshift(data); renderBoard();
+  }});
+}
+async function noteToTask(id) {
+  const n = byNote(id); if (!n) return;
+  const lines = (n.content || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const title = (lines[0] || '').replace(/(^|\s)#[^\s#]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || '來自留言板的待辦';
+  const {data, error} = await dbInsert({user_id: user.id, title, category: '生活', priority: '普通', due_at: null, repeat_type: '不重複', repeat_every: 1, completed: false, notes: lines.slice(1).join('\n').slice(0, 2000), attachments: [], tags: normTags(extractTags(n.content)), subtasks: []});
+  if (error) { toast('轉成待辦失敗：' + error.message, 'error'); return; }
+  lastWrite = Date.now(); tasks.unshift(data); render();
+  toast('已轉成待辦（附件不會一起複製）', {label: '前往待辦', fn: () => setPage('todo'), ttl: 6000});
+}
+function renderNoteExisting() {
+  $('noteEditExisting').innerHTML = editNoteAtt.map((a, i) => `<div class="attrow"><a href="#" data-attachment-path="${escapeHtml(a.path || '')}" data-legacy-url="">📎 ${escapeHtml(a.name || '附件')}</a><button type="button" class="iconbtn" data-rm-natt="${i}" aria-label="移除附件">✕</button></div>`).join('');
+}
+function openNoteEdit(id) {
+  const n = byNote(id); if (!n) return;
+  editNoteId = n.id; $('noteEditText').value = n.content || ''; noteEdit.clear();
+  editNoteAtt = (n.attachments || []).slice(); editNoteRemoved = []; renderNoteExisting();
+  msg('noteEditMsg', ''); $('noteModal').classList.remove('hide'); $('noteEditText').focus();
+}
+async function saveNoteEdit() {
+  const content = $('noteEditText').value.trim();
+  if (!content && !editNoteAtt.length && !noteEdit.files.length) { msg('noteEditMsg', '內容和附件不能都是空的。', 'error'); return; }
+  $('saveNote').disabled = true;
+  let up = [];
+  try {
+    up = await uploadAttachments(noteEdit.files, 'noteEditMsg');
+    lastWrite = Date.now();
+    const {data, error} = await db.from('notes').update({content, attachments: editNoteAtt.concat(up), updated_at: new Date().toISOString()}).eq('id', editNoteId).select().single();
+    if (error) throw error;
+    removeFiles(editNoteRemoved.map(a => a.path));
+    const i = notes.findIndex(x => sameId(x.id, editNoteId)); if (i >= 0) notes[i] = data;
+    noteEdit.clear(); $('noteModal').classList.add('hide'); renderBoard(); toast('已儲存', 'success');
+  } catch (e) { removeFiles(up.map(a => a.path)); msg('noteEditMsg', '儲存失敗：' + noteErr(e), 'error'); }
+  finally { $('saveNote').disabled = false; }
+}
+function exportNotes() {
+  if (!notesOk) { toast('留言板尚未啟用，沒有資料可匯出', 'error'); return; }
+  const blob = new Blob([JSON.stringify(notes, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = `board-backup-${dayKey(new Date())}.json`; a.click(); URL.revokeObjectURL(url);
+}
+const noteNew = pendingList('noteFiles', 'noteFileList'), noteEdit = pendingList('noteEditFiles', 'noteEditFileList');
+
 /* ---------- 提醒設定 ---------- */
 async function loadSettings() {
   const {data, error} = await db.from('user_settings').select('remind_minutes').eq('user_id', user.id).maybeSingle();
@@ -513,8 +725,8 @@ async function showSession(session) {
   $('appPanel').classList.toggle('hide', !user);
   $('menuBtn').classList.toggle('hide', !user);
   $('menuUser').textContent = user?.email || '';
-  if (user) { setStatus('已登入，正在同步'); await loadSettings(); await loadTasks(); subscribe(); }
-  else { unsubscribe(); tasks = []; render(); setStatus('尚未登入'); }
+  if (user) { setStatus('已登入，正在同步'); await loadSettings(); await loadTasks(); subscribe(); setPage(ui.page); if (ui.page !== 'board') loadNotes(true); }
+  else { unsubscribe(); tasks = []; notes = []; notesLoaded = false; render(); renderBoard(); setStatus('尚未登入'); }
 }
 async function auth(mode) {
   const email = $('email').value.trim(), password = $('password').value;
@@ -560,6 +772,9 @@ function subscribe() {
     channel = db.channel('tasks-changes').on('postgres_changes', {event: '*', schema: 'public', table: 'tasks'}, () => {
       if (Date.now() - lastWrite < 1500) return;
       clearTimeout(loadTimer); loadTimer = setTimeout(() => loadTasks(true), 500);
+    }).on('postgres_changes', {event: '*', schema: 'public', table: 'notes'}, () => {
+      if (Date.now() - lastWrite < 1500) return;
+      clearTimeout(noteTimer); noteTimer = setTimeout(() => loadNotes(true), 500);
     }).subscribe();
   } catch (e) { channel = null; }
 }
@@ -1142,6 +1357,24 @@ $('editSubs').addEventListener('keydown', e => {
   if (e.key === 'ArrowUp') { e.preventDefault(); moveSub(i, i - 1); }
   if (e.key === 'ArrowDown') { e.preventDefault(); moveSub(i, i + 1); }
 });
+$('pageTabs').addEventListener('click', e => { const b = e.target.closest('button[data-page]'); if (b) setPage(b.dataset.page); });
+$('notePostBtn').addEventListener('click', postNote);
+$('noteText').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); postNote(); } });
+$('noteText').addEventListener('paste', e => { const fs = e.clipboardData && e.clipboardData.files; if (fs && fs.length) { e.preventDefault(); noteNew.add(fs); } });
+$('noteComposer').addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+$('noteComposer').addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); noteNew.add(e.dataTransfer.files); } });
+$('noteSearch').addEventListener('input', renderBoard);
+$('boardTags').addEventListener('click', e => { const b = e.target.closest('button[data-ntagf]'); if (!b) return; noteTag = noteTag === b.dataset.ntagf ? '' : b.dataset.ntagf; renderBoard(); });
+$('boardList').addEventListener('click', e => {
+  const t = e.target.closest('button[data-ntag]'); if (t) { noteTag = noteTag === t.dataset.ntag ? '' : t.dataset.ntag; renderBoard(); return; }
+  const b = e.target.closest('button[data-naction]'); if (!b) return;
+  const a = b.dataset.naction, id = b.dataset.id;
+  if (a === 'pin') togglePin(id); else if (a === 'edit') openNoteEdit(id); else if (a === 'delete') deleteNote(id); else if (a === 'totask') noteToTask(id);
+});
+$('noteEditExisting').addEventListener('click', e => { const b = e.target.closest('button[data-rm-natt]'); if (!b) return; const [a] = editNoteAtt.splice(+b.dataset.rmNatt, 1); if (a) editNoteRemoved.push(a); renderNoteExisting(); });
+$('saveNote').addEventListener('click', saveNoteEdit);
+$('closeNoteModal').addEventListener('click', () => $('noteModal').classList.add('hide'));
+$('noteModal').addEventListener('click', e => { if (e.target === $('noteModal')) $('noteModal').classList.add('hide'); });
 $('saveRemind').addEventListener('click', saveRemind);
 $('newRepeat').addEventListener('change', () => syncRepeatUI('new'));
 $('editRepeat').addEventListener('change', () => syncRepeatUI('edit'));
@@ -1175,6 +1408,7 @@ $('menu').addEventListener('click', async e => {
   const k = b.dataset.menu; closeMenu();
   if (k === 'refresh') await loadTasks();
   if (k === 'export') exportData();
+  if (k === 'exportnotes') exportNotes();
   if (k === 'import') $('importFile').click();
   if (k === 'logout') { await db.auth.signOut(); await showSession(null); }
   if (k === 'notify') await onNotifyClick();
@@ -1183,14 +1417,15 @@ $('menu').addEventListener('click', async e => {
 $('importFile').addEventListener('change', e => importData(e.target.files[0]));
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeMenu(); $('editModal').classList.add('hide'); $('settingsModal').classList.add('hide'); return; }
+  if (e.key === 'Escape') { closeMenu(); $('editModal').classList.add('hide'); $('settingsModal').classList.add('hide'); $('noteModal').classList.add('hide'); return; }
   if (e.metaKey || e.ctrlKey || e.altKey || !user) return;
   const tag = (document.activeElement && document.activeElement.tagName) || '';
-  if (/INPUT|TEXTAREA|SELECT/.test(tag) || !$('editModal').classList.contains('hide') || !$('settingsModal').classList.contains('hide') || !$('pwModal').classList.contains('hide')) return;
-  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); $('newTitle').focus(); }
-  if (e.key === '/') { e.preventDefault(); $('searchText').focus(); }
+  if (/INPUT|TEXTAREA|SELECT/.test(tag) || !$('editModal').classList.contains('hide') || !$('settingsModal').classList.contains('hide') || !$('noteModal').classList.contains('hide') || !$('pwModal').classList.contains('hide')) return;
+  const onBoard = ui.page === 'board';
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); (onBoard ? $('noteText') : $('newTitle')).focus(); }
+  if (e.key === '/') { e.preventDefault(); (onBoard ? $('noteSearch') : $('searchText')).focus(); }
 });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && user && Date.now() - lastLoad > 30000) loadTasks(true); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && user && Date.now() - lastLoad > 30000) { loadTasks(true); loadNotes(true); } });
 window.addEventListener('online', () => { if (user) loadTasks(true); });
 window.addEventListener('offline', () => setStatus('離線中', 'bad'));
 setInterval(checkReminders, 30000);
@@ -1204,8 +1439,9 @@ db.auth.onAuthStateChange((event, session) => {
 /* ---------- 啟動 ---------- */
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
 $('sortBy').value = ui.sort;
+if (ui.page !== 'board') ui.page = 'todo';
 if (!VIEW_NAMES[ui.view]) ui.view = 'open';
-render();
+render(); renderBoard(); setPage(ui.page);
 (async () => { const {data} = await db.auth.getSession(); await showSession(data.session); })();
 })();
 </script>
