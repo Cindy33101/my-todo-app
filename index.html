@@ -13,11 +13,21 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23A88D6C'/%3E%3Cpath d='M18 33l10 10 19-22' fill='none' stroke='%23fff' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <title>我的待辦清單｜奶油鵝黃月曆</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>(function(){var d=document.documentElement,bg='soft',fw='bold';try{var v=JSON.parse(localStorage.getItem('todo-appearance')||'{}');if(['bright','soft','dim'].indexOf(v.bg)>-1)bg=v.bg;if(['normal','bold','heavy'].indexOf(v.fw)>-1)fw=v.fw;}catch(e){}d.setAttribute('data-bg',bg);d.setAttribute('data-fw',fw);})();</script>
 <style>
 :root{--bg:#FFFBE8;--card:#fff;--ink:#75694D;--muted:#9B8E75;--line:#F0EBDD;--accent:#A88D6C;--accent-ink:#fff;--soft:#F5EBC1;--soft2:#F7F2E5;--red:#B85C5C;--redbg:#fff0f2;--green:#63866D;--greenbg:#e6f6ef;--warn:#9a5c0a;--warnbg:#fff4e6;--late:#b3243d;--latebg:#ffe3e7;--shadow:0 8px 28px #75694d0a;color-scheme:light}
 @media(prefers-color-scheme:dark){:root{--bg:#1d1a14;--card:#27231b;--ink:#E9E0CA;--muted:#A99D84;--line:#3a3427;--accent:#C9A97C;--accent-ink:#1d1a14;--soft:#40391f;--soft2:#332e22;--red:#E08B8B;--redbg:#3d2626;--green:#8DBB98;--greenbg:#22352a;--warn:#E8B568;--warnbg:#3b2f1a;--late:#F08A9A;--latebg:#44222a;--shadow:none;color-scheme:dark}}
+/* 外觀：背景亮度與字體粗細（只套用在淺色模式的背景色，粗細兩種模式都適用） */
+:root{--fw:600}
+:root[data-fw="normal"]{--fw:400}
+:root[data-fw="bold"]{--fw:600}
+:root[data-fw="heavy"]{--fw:700}
+@media (prefers-color-scheme: light){
+  :root[data-bg="soft"]{--bg:#F2EAD0;--card:#FBF7E9;--soft2:#EFE6CC;--soft:#E8DCB0;--line:#DDD0AC;--ink:#5B4F36;--muted:#7D7058;--accent:#8C7050;--shadow:0 6px 20px #5b4f3612}
+  :root[data-bg="dim"]{--bg:#E6DCBD;--card:#F3ECD6;--soft2:#E4D9B9;--soft:#D9CA9B;--line:#CFC19A;--ink:#4F4430;--muted:#6F634C;--accent:#7F6446;--shadow:0 6px 20px #4f443015}
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-weight:var(--fw);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-text-size-adjust:100%}
 button,input,select,textarea{font:inherit;font-size:16px;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -44,14 +54,14 @@ button{cursor:pointer}
 .auth{max-width:470px;margin:40px auto;padding:24px}
 .auth h2{margin:0 0 8px}
 .field{display:flex;flex-direction:column;gap:7px;margin:12px 0}
-.field label{font-size:13px;font-weight:600}
+.field label{font-size:13px;font-weight:700}
 .field input,.field select,.field textarea,.pwrow input{width:100%;min-width:0;padding:12px 13px;border:1px solid var(--line);border-radius:11px;background:var(--card);outline:none}
 .field textarea{resize:vertical}
 .field input:focus,.field select:focus,.field textarea:focus,.pwrow input:focus,.quick input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #A88D6C2a}
 .pwrow{position:relative}
 .pwrow input{padding-right:64px}
 .pwrow button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--accent);padding:8px;font-size:13px}
-.btn{border:0;border-radius:11px;padding:12px 15px;font-weight:650;min-height:44px}
+.btn{border:0;border-radius:11px;padding:12px 15px;font-weight:max(650,calc(var(--fw) + 50));min-height:44px}
 .btn[disabled]{opacity:.6}
 .primary{background:var(--accent);color:var(--accent-ink)}
 .secondary{background:var(--soft);color:var(--ink)}
@@ -105,7 +115,7 @@ button.tag{border:0;font-family:inherit;cursor:pointer}
 .subhandle:active{cursor:grabbing}
 .subrow.dragging{background:var(--soft);border-radius:10px;box-shadow:0 4px 14px #0003}
 .pagetabs{display:flex;gap:6px;background:var(--soft2);border-radius:14px;padding:4px;margin-bottom:14px}
-.pagetabs button{flex:1;border:0;background:none;border-radius:11px;padding:10px;font-weight:650;min-height:42px}
+.pagetabs button{flex:1;border:0;background:none;border-radius:11px;padding:10px;font-weight:max(650,calc(var(--fw) + 50));min-height:42px}
 .pagetabs button.active{background:var(--card);box-shadow:var(--shadow)}
 .note{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 14px;box-shadow:var(--shadow)}
 .note.pinned{border-color:var(--accent)}
@@ -175,8 +185,8 @@ body.noextra .extra-ui{display:none!important}
 .task.p-low{border-left-color:var(--soft)}
 .check{width:24px;height:24px;flex:0 0 24px;margin-top:1px;accent-color:var(--accent)}
 .taskmain{flex:1;min-width:0}
-.tasktitle{font-size:15.5px;font-weight:650;overflow-wrap:anywhere;cursor:pointer;line-height:1.4}
-.done .tasktitle{color:var(--muted);text-decoration:line-through;font-weight:500}
+.tasktitle{font-size:15.5px;font-weight:max(650,calc(var(--fw) + 50));overflow-wrap:anywhere;cursor:pointer;line-height:1.4}
+.done .tasktitle{color:var(--muted);text-decoration:line-through;font-weight:var(--fw)}
 .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
 .notes{margin:7px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .taskactions{display:flex;gap:4px}
@@ -219,6 +229,7 @@ body.noextra .extra-ui{display:none!important}
     <div class="menuinfo" id="menuUser"></div>
     <button data-menu="refresh" role="menuitem">↻ 重新同步</button>
     <button data-menu="notify" id="notifyItem" role="menuitem">🔔 開啟背景推播</button>
+    <button data-menu="appearance" role="menuitem">🎨 外觀（背景／字體）</button>
     <button data-menu="settings" id="settingsItem" role="menuitem">⏰ 提醒時間</button>
     <button data-menu="export" role="menuitem">⤓ 匯出待辦備份</button>
     <button data-menu="exportnotes" role="menuitem">⤓ 匯出留言板備份</button>
@@ -348,6 +359,16 @@ body.noextra .extra-ui{display:none!important}
   <div class="field"><label for="noteEditFiles">新增附件</label><input id="noteEditFiles" type="file" multiple><div id="noteEditFileList"></div><div id="noteEditExisting"></div></div>
   <button id="saveNote" class="btn primary wide">儲存修改</button>
   <div id="noteEditMsg" class="notice" role="status"></div>
+</div></div>
+
+<div id="appearanceModal" class="modal hide" role="dialog" aria-modal="true" aria-labelledby="appearanceHead"><div class="modalbox">
+  <div class="modalhead"><h3 id="appearanceHead">外觀設定</h3><button class="iconbtn" id="closeAppearance" aria-label="關閉">✕</button></div>
+  <div class="field"><label for="bgSelect">背景亮度</label>
+    <select id="bgSelect"><option value="bright">明亮（原本的樣子）</option><option value="soft">柔和（預設）</option><option value="dim">更柔和（最不刺眼）</option></select></div>
+  <div class="field"><label for="fwSelect">字體粗細</label>
+    <select id="fwSelect"><option value="normal">標準</option><option value="bold">加粗（預設）</option><option value="heavy">特粗</option></select>
+    <small class="muted">選了立刻生效。只套用在目前這個裝置，手機和電腦可以分別設定；背景亮度不影響深色模式。</small></div>
+  <button id="resetAppearance" class="btn secondary wide" type="button">還原預設</button>
 </div></div>
 
 <div id="settingsModal" class="modal hide" role="dialog" aria-modal="true" aria-labelledby="settingsHead"><div class="modalbox">
@@ -692,6 +713,22 @@ function exportNotes() {
   a.href = url; a.download = `board-backup-${dayKey(new Date())}.json`; a.click(); URL.revokeObjectURL(url);
 }
 const noteNew = pendingList('noteFiles', 'noteFileList'), noteEdit = pendingList('noteEditFiles', 'noteEditFileList');
+
+/* ---------- 外觀 ---------- */
+const BG_COLORS = {bright: '#FFFBE8', soft: '#F2EAD0', dim: '#E6DCBD'};
+function loadAppearance() {
+  let v = {}; try { v = JSON.parse(localStorage.getItem('todo-appearance') || '{}'); } catch (e) {}
+  return {bg: ['bright', 'soft', 'dim'].includes(v.bg) ? v.bg : 'soft', fw: ['normal', 'bold', 'heavy'].includes(v.fw) ? v.fw : 'bold'};
+}
+function applyAppearance(a) {
+  document.documentElement.setAttribute('data-bg', a.bg); document.documentElement.setAttribute('data-fw', a.fw);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => { if ((m.media || '').includes('light')) m.content = BG_COLORS[a.bg]; });
+}
+function saveAppearance(a) { try { localStorage.setItem('todo-appearance', JSON.stringify(a)); } catch (e) {} applyAppearance(a); }
+function openAppearance() {
+  const a = loadAppearance(); $('bgSelect').value = a.bg; $('fwSelect').value = a.fw;
+  $('appearanceModal').classList.remove('hide'); $('bgSelect').focus();
+}
 
 /* ---------- 提醒設定 ---------- */
 async function loadSettings() {
@@ -1376,6 +1413,11 @@ $('saveNote').addEventListener('click', saveNoteEdit);
 $('closeNoteModal').addEventListener('click', () => $('noteModal').classList.add('hide'));
 $('noteModal').addEventListener('click', e => { if (e.target === $('noteModal')) $('noteModal').classList.add('hide'); });
 $('saveRemind').addEventListener('click', saveRemind);
+$('bgSelect').addEventListener('change', () => saveAppearance({bg: $('bgSelect').value, fw: $('fwSelect').value}));
+$('fwSelect').addEventListener('change', () => saveAppearance({bg: $('bgSelect').value, fw: $('fwSelect').value}));
+$('resetAppearance').addEventListener('click', () => { const a = {bg: 'soft', fw: 'bold'}; $('bgSelect').value = a.bg; $('fwSelect').value = a.fw; saveAppearance(a); });
+$('closeAppearance').addEventListener('click', () => $('appearanceModal').classList.add('hide'));
+$('appearanceModal').addEventListener('click', e => { if (e.target === $('appearanceModal')) $('appearanceModal').classList.add('hide'); });
 $('newRepeat').addEventListener('change', () => syncRepeatUI('new'));
 $('editRepeat').addEventListener('change', () => syncRepeatUI('edit'));
 $('closeSettings').addEventListener('click', () => $('settingsModal').classList.add('hide'));
@@ -1413,14 +1455,15 @@ $('menu').addEventListener('click', async e => {
   if (k === 'logout') { await db.auth.signOut(); await showSession(null); }
   if (k === 'notify') await onNotifyClick();
   if (k === 'settings') openSettings();
+  if (k === 'appearance') openAppearance();
 });
 $('importFile').addEventListener('change', e => importData(e.target.files[0]));
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeMenu(); $('editModal').classList.add('hide'); $('settingsModal').classList.add('hide'); $('noteModal').classList.add('hide'); return; }
+  if (e.key === 'Escape') { closeMenu(); $('editModal').classList.add('hide'); $('settingsModal').classList.add('hide'); $('noteModal').classList.add('hide'); $('appearanceModal').classList.add('hide'); return; }
   if (e.metaKey || e.ctrlKey || e.altKey || !user) return;
   const tag = (document.activeElement && document.activeElement.tagName) || '';
-  if (/INPUT|TEXTAREA|SELECT/.test(tag) || !$('editModal').classList.contains('hide') || !$('settingsModal').classList.contains('hide') || !$('noteModal').classList.contains('hide') || !$('pwModal').classList.contains('hide')) return;
+  if (/INPUT|TEXTAREA|SELECT/.test(tag) || !$('editModal').classList.contains('hide') || !$('settingsModal').classList.contains('hide') || !$('appearanceModal').classList.contains('hide') || !$('noteModal').classList.contains('hide') || !$('pwModal').classList.contains('hide')) return;
   const onBoard = ui.page === 'board';
   if (e.key === 'n' || e.key === 'N') { e.preventDefault(); (onBoard ? $('noteText') : $('newTitle')).focus(); }
   if (e.key === '/') { e.preventDefault(); (onBoard ? $('noteSearch') : $('searchText')).focus(); }
@@ -1437,6 +1480,7 @@ db.auth.onAuthStateChange((event, session) => {
 });
 
 /* ---------- 啟動 ---------- */
+applyAppearance(loadAppearance());
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
 $('sortBy').value = ui.sort;
 if (ui.page !== 'board') ui.page = 'todo';
